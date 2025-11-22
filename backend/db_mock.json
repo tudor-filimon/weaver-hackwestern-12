@@ -1,0 +1,204 @@
+{
+  "boards": [
+    {
+      "id": "board-001",
+      "name": "Product Planning Canvas"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "node-001",
+      "board_id": "board-001",
+      "x": 250.0,
+      "y": 100.0,
+      "width": 200.0,
+      "height": 150.0,
+      "title": "Initial Idea",
+      "content": "We want to build a new AI-powered note-taking app",
+      "role": "user",
+      "is_root": true,
+      "is_collapsed": false,
+      "is_starred": true,
+      "color": "#3b82f6",
+      "icon": "💡",
+      "model": "gemini-2.0-flash-exp",
+      "temperature": 0.7,
+      "metadata": {}
+    },
+    {
+      "id": "node-002",
+      "board_id": "board-001",
+      "x": 100.0,
+      "y": 300.0,
+      "width": 200.0,
+      "height": 150.0,
+      "title": "Features",
+      "content": "Key features: voice notes, auto-summarization, smart tags",
+      "role": "assistant",
+      "is_root": false,
+      "is_collapsed": false,
+      "is_starred": false,
+      "color": "#10b981",
+      "icon": "✨",
+      "model": "gemini-2.0-flash-exp",
+      "temperature": 0.7,
+      "metadata": {}
+    },
+    {
+      "id": "node-003",
+      "board_id": "board-001",
+      "x": 400.0,
+      "y": 300.0,
+      "width": 200.0,
+      "height": 150.0,
+      "title": "Target Users",
+      "content": "Primary users: students, researchers, knowledge workers",
+      "role": "assistant",
+      "is_root": false,
+      "is_collapsed": false,
+      "is_starred": false,
+      "color": "#8b5cf6",
+      "icon": "👥",
+      "model": "gemini-2.0-flash-exp",
+      "temperature": 0.7,
+      "metadata": {}
+    },
+    {
+      "id": "node-004",
+      "board_id": "board-001",
+      "x": 100.0,
+      "y": 500.0,
+      "width": 200.0,
+      "height": 150.0,
+      "title": "Tech Stack",
+      "content": "React + FastAPI + Supabase + Gemini API",
+      "role": "user",
+      "is_root": false,
+      "is_collapsed": false,
+      "is_starred": false,
+      "color": "#f59e0b",
+      "icon": "⚙️",
+      "model": "gemini-2.0-flash-exp",
+      "temperature": 0.7,
+      "metadata": {}
+    },
+    {
+      "id": "node-005",
+      "board_id": "board-001",
+      "x": 400.0,
+      "y": 500.0,
+      "width": 200.0,
+      "height": 150.0,
+      "title": "MVP Timeline",
+      "content": "Phase 1: Core note-taking (4 weeks), Phase 2: AI features (6 weeks)",
+      "role": "assistant",
+      "is_root": false,
+      "is_collapsed": false,
+      "is_starred": false,
+      "color": "#ef4444",
+      "icon": "📅",
+      "model": "gemini-2.0-flash-exp",
+      "temperature": 0.7,
+      "metadata": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-001",
+      "board_id": "board-001",
+      "source_node_id": "node-001",
+      "target_node_id": "node-002",
+      "edge_type": "default",
+      "label": "explores",
+      "is_deleted": false
+    },
+    {
+      "id": "edge-002",
+      "board_id": "board-001",
+      "source_node_id": "node-001",
+      "target_node_id": "node-003",
+      "edge_type": "default",
+      "label": "defines",
+      "is_deleted": false
+    },
+    {
+      "id": "edge-003",
+      "board_id": "board-001",
+      "source_node_id": "node-002",
+      "target_node_id": "node-004",
+      "edge_type": "default",
+      "label": "requires",
+      "is_deleted": false
+    },
+    {
+      "id": "edge-004",
+      "board_id": "board-001",
+      "source_node_id": "node-003",
+      "target_node_id": "node-005",
+      "edge_type": "default",
+      "label": "informs",
+      "is_deleted": false
+    }
+  ],
+  "chat_messages": [
+    {
+      "id": "chat-001",
+      "board_id": "board-001",
+      "node_id": "node-001",
+      "role": "user",
+      "content": "We want to build a new AI-powered note-taking app",
+      "model": "gemini-2.0-flash-exp",
+      "temperature": 0.7,
+      "meta": {}
+    },
+    {
+      "id": "chat-002",
+      "board_id": "board-001",
+      "node_id": "node-002",
+      "role": "assistant",
+      "content": "Key features: voice notes, auto-summarization, smart tags",
+      "model": "gemini-2.0-flash-exp",
+      "temperature": 0.7,
+      "meta": {
+        "tokens_used": 150,
+        "latency_ms": 1200
+      }
+    },
+    {
+      "id": "chat-003",
+      "board_id": "board-001",
+      "node_id": "node-003",
+      "role": "assistant",
+      "content": "Primary users: students, researchers, knowledge workers",
+      "model": "gemini-2.0-flash-exp",
+      "temperature": 0.7,
+      "meta": {
+        "tokens_used": 120,
+        "latency_ms": 980
+      }
+    },
+    {
+      "id": "chat-004",
+      "board_id": "board-001",
+      "node_id": "node-004",
+      "role": "user",
+      "content": "React + FastAPI + Supabase + Gemini API",
+      "model": "gemini-2.0-flash-exp",
+      "temperature": 0.7,
+      "meta": {}
+    },
+    {
+      "id": "chat-005",
+      "board_id": "board-001",
+      "node_id": "node-005",
+      "role": "assistant",
+      "content": "Phase 1: Core note-taking (4 weeks), Phase 2: AI features (6 weeks)",
+      "model": "gemini-2.0-flash-exp",
+      "temperature": 0.7,
+      "meta": {
+        "tokens_used": 180,
+        "latency_ms": 1500
+      }
+    }
+  ]
+}
