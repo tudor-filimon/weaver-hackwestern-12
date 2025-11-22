@@ -86,26 +86,11 @@ class EdgeData(BaseModel):
 # ---------------------------- Board Schemas (for database) ----------------------------------#
 
 class BoardBase(BaseModel):
+    id: UUID
     name: str
-    owner_id: Optional[UUID] = None
-
-
-class BoardCreate(BoardBase):
-    pass
-
 
 class BoardUpdate(BaseModel):
     name: Optional[str] = None
-    owner_id: Optional[UUID] = None
-
-
-class BoardResponse(BoardBase):
-    id: UUID
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 # ---------------------------- Database Node Schemas (for Supabase storage) ----------------------------------#
@@ -119,6 +104,7 @@ class NodeBase(BaseModel):
     width: Optional[float] = None
     height: Optional[float] = None
     node_type: Optional[str] = "custom"
+    is_root: bool
     # Store all React Flow data as JSONB
     data: Dict[str, Any] = Field(default_factory=dict)
 
@@ -126,9 +112,13 @@ class NodeBase(BaseModel):
 class NodeCreate(NodeBase):
     pass
 
-
 class NodeUpdate(BaseModel):
-    board_id: Optional[UUID] = None
+    node_id: str  # Required - TEXT ID from frontend
+    prompt: Optional[str] = None  # If provided, triggers LLM call
+    temperature: Optional[float] = None  # For LLM call
+    max_tokens: Optional[int] = None  # For LLM call
+    # Regular update fields
+    board_id: Optional[str] = None  # TEXT, not UUID based on your SQL schema
     x: Optional[float] = None
     y: Optional[float] = None
     width: Optional[float] = None
@@ -235,7 +225,7 @@ class ChatMessageResponse(ChatMessageBase):
 class BoardGetResponse(BaseModel):
     # GET /api/boards/:boardId response
     
-    board: BoardResponse
+    board: BoardBase
     nodes: List[ReactFlowNode]  # Return React Flow format
     edges: List[ReactFlowEdge]  # Return React Flow format
 

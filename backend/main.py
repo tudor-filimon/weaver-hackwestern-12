@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import branch, edge, flow, node
+from routes import board
 
 # Fast API App
 app = FastAPI(title="bn.AI")
@@ -15,10 +15,7 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(branch.router, prefix="/api/branches", tags=["branches"])
-app.include_router(edge.router, prefix="/api/edges", tags=["edges"])
-app.include_router(flow.router, prefix="/api/flows", tags=["flows"])
-app.include_router(node.router, prefix="/api/nodes", tags=["nodes"])
+app.include_router(board.router, prefix="/api/boards")
 
 
 @app.get("/")
