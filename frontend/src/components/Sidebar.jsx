@@ -26,7 +26,7 @@ export default function Sidebar() {
         {/* Search Button */}
         <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-base text-neutral-200 hover:bg-neutral-800 transition-colors">
           <Search size={16} className="text-neutral-400" />
-          <span>Search chats</span>
+          <span>Search canvases</span>
         </button>
       </div>
 
