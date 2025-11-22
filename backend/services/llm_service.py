@@ -23,21 +23,17 @@ class LLMService:
     def _get_node_context(self, node_id: str) -> Optional[LLMNodeContext]:
         """Fetch node data from database to use as context"""
         try:
-            # Query by 'id' column (not 'node_id') - your database uses 'id' for the node identifier
             result = supabase.table("nodes").select("*").eq("id", node_id).execute()
             
             if result.data and len(result.data) > 0:
                 node = result.data[0]
                 
-                # Your database has fields directly on the node object
-                # Extract them directly (not from node.data)
                 return LLMNodeContext(
                     node_id=node_id,
                     title=node.get("title"),
                     role=node.get("role"),
                     prompt=node.get("prompt"),  # CHANGED: was content, now prompt (from database)
                     model=node.get("model"),
-                    temperature=node.get("temperature"),
                     metadata=node.get("metadata")
                 )
             return None
@@ -51,14 +47,25 @@ class LLMService:
         """Build the full prompt with node context"""
         prompt_parts = []
         
-        # Add node context if available
+        # NEW: Get stored context from database (parent nodes)
+        try:
+            node_result = supabase.table("nodes").select("context").eq("id", request.node_id).execute()
+            stored_context = node_result.data[0].get("context") if node_result.data else None
+            
+            if stored_context:
+                prompt_parts.append(stored_context)
+                prompt_parts.append("\n" + "=" * 50 + "\n")
+        except Exception as e:
+            print(f"Error fetching stored context: {e}")
+        
+        # Add current node information
         if node_context:
-            context_text = f"Node Information:\n"
+            context_text = f"Current Node Information:\n"
             if node_context.title:
                 context_text += f"- Title: {node_context.title}\n"
             if node_context.role:
                 context_text += f"- Role: {node_context.role}\n"
-            if node_context.prompt:  # This is now the prompt from the node
+            if node_context.prompt:
                 context_text += f"- Prompt: {node_context.prompt}\n"
             prompt_parts.append(context_text)
             prompt_parts.append("\n---\n\n")

@@ -28,6 +28,7 @@ CREATE TABLE nodes (
     title TEXT, -- nodeChatTitle
     prompt TEXT, -- CHANGED: was content (user input / prompt)
     response TEXT, -- NEW: Gemini generated response
+    context TEXT, -- NEW: Context information from parent nodes
     role TEXT NOT NULL CHECK (role IN ('system', 'user', 'assistant')),
     is_root BOOLEAN DEFAULT FALSE,
     is_collapsed BOOLEAN DEFAULT FALSE,
@@ -117,6 +118,7 @@ RETURNS TABLE (
     node_title TEXT,
     node_prompt TEXT,  -- CHANGED: was node_content
     node_response TEXT,  -- NEW
+    node_context TEXT,  -- NEW
     node_role TEXT,
     chat_content TEXT,
     chat_role TEXT
@@ -130,6 +132,7 @@ BEGIN
         n.title,
         n.prompt,  -- CHANGED: was n.content
         n.response,  -- NEW
+        n.context,  -- NEW
         n.role,
         cm.content,
         cm.role

@@ -37,6 +37,7 @@ async def create_node(
             "title": node_data.title,
             "prompt": node_data.prompt,
             "response": None,
+            "context": node_data.context,  # NEW
             "role": node_data.role or "user",
             "is_collapsed": node_data.is_collapsed,
             "is_starred": node_data.is_starred,
@@ -91,6 +92,7 @@ async def update_node(
             llm_request = LLMServiceRequest(
                 node_id=id,
                 prompt=node_data.prompt,
+                context=node_data.context,
             )
             
             llm_response = await llm_service.generate_content(llm_request)
@@ -125,6 +127,8 @@ async def update_node(
             update_data["prompt"] = node_data.prompt
         if node_data.response is not None:
             update_data["response"] = node_data.response
+        if node_data.context is not None:  # NEW
+            update_data["context"] = node_data.context
         if node_data.role is not None:
             update_data["role"] = node_data.role
         if node_data.is_root is not None:
@@ -208,7 +212,8 @@ async def bulk_update_nodes(
             if node_update.prompt is not None:
                 update_data["prompt"] = node_update.prompt
             if node_update.response is not None:
-                update_data["response"] = node_update.response
+                update_data["response"] = node_update.response            if node_update.context is not None:  # NEW
+                update_data["context"] = node_update.context
             if node_update.role is not None:
                 update_data["role"] = node_update.role
             if node_update.is_root is not None:

@@ -108,6 +108,7 @@ class NodeBase(BaseModel):
     title: Optional[str] = None
     prompt: Optional[str] = None  # CHANGED: was content (user input)
     response: Optional[str] = None  # NEW: Gemini generated content
+    context: Optional[str] = None  # NEW: Context information for the node
     role: Optional[str] = None
     is_root: bool = False
     is_collapsed: bool = False
@@ -123,6 +124,7 @@ class NodeCreate(NodeBase):
     height: Optional[float] = None
     title: Optional[str] = None
     prompt: Optional[str] = None
+    context: Optional[str] = None  # NEW
     role: Optional[str] = None
     is_root: bool = False
     is_collapsed: bool = False
@@ -140,6 +142,7 @@ class NodeUpdate(BaseModel):
     title: Optional[str] = None
     prompt: Optional[str] = None  # User input / prompt
     response: Optional[str] = None  # ADD: Gemini generated response
+    context: Optional[str] = None  # NEW: Context information
     role: Optional[str] = None
     is_root: Optional[bool] = None
     is_collapsed: Optional[bool] = None
