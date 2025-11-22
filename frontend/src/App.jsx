@@ -191,7 +191,7 @@ function Flow() {
         type: 'chat',
         position: finalPosition,
         data: { 
-          label: 'New Chat', 
+          label: 'New Node', 
           messages: [],
           onAddNode: handleAddConnectedNode // Pass the function recursively
         },
@@ -229,8 +229,8 @@ function Flow() {
       type: 'chat', 
       position: { x: 100, y: 100 }, 
       data: { 
-        label: 'New Chat', 
-        model: 'gpt-4o',
+        label: 'New Node', 
+        model: 'gemini-pro',
         messages: [],
         isRoot: true, // Mark as root node
         onAddNode: handleAddConnectedNode // Inject handler
@@ -296,7 +296,7 @@ function Flow() {
         type: 'chat',
         position: finalPosition,
         data: { 
-          label: 'New Chat', 
+          label: 'New Node', 
           messages: [],
           isRoot: isRoot, // Mark as root if canvas is empty
           onAddNode: handleAddConnectedNode // Ensure new manual nodes also have the handler

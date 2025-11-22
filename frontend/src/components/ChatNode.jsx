@@ -114,14 +114,14 @@ export default function ChatNode({ data, id, isConnectable }) {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState(data.messages || []);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [model, setModel] = useState(data.model || 'gpt-4o');
+  const [model, setModel] = useState(data.model || 'gemini-pro');
   const [hasSent, setHasSent] = useState(messages.length > 0);
   const [isStarred, setIsStarred] = useState(data.isStarred || false);
   const isRoot = data.isRoot || false;
   
   // Title editing state
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [title, setTitle] = useState(data.label || "New Chat");
+  const [title, setTitle] = useState(data.label || "New Node");
   
   const textareaRef = useRef(null);
   const titleInputRef = useRef(null);
@@ -227,14 +227,6 @@ export default function ChatNode({ data, id, isConnectable }) {
     document.addEventListener('mouseup', handleMouseUp, { passive: false });
   }, [id, nodeWidth, nodeHeight, updateNode]);
 
-  // Double-click to reset to auto size
-  const handleResizeReset = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setNodeWidth(null); // Reset to auto width (dynamic)
-    setNodeHeight(null); // Reset to auto height (dynamic)
-    updateNode(id, { width: null, height: null });
-  }, [id, updateNode]);
 
   // Root nodes have double border thickness (border-2 = 2px, so double = 4px)
   const borderWidthClass = isRoot ? 'border-[4px]' : 'border';
@@ -246,7 +238,8 @@ export default function ChatNode({ data, id, isConnectable }) {
       className={`group/node relative bg-white dark:bg-neutral-900 rounded-[2rem] shadow-xl ${borderWidthClass} flex flex-col transition-colors duration-200 font-sans ${borderColorClass} ${isResizing ? 'select-none' : ''}`}
       style={{ 
         ...(nodeWidth && { width: `${nodeWidth}px` }),
-        ...(nodeHeight && { height: `${nodeHeight}px` })
+        // Only apply height when not collapsed - when collapsed, let it be auto (just header height)
+        ...(nodeHeight && !isCollapsed && { height: `${nodeHeight}px` })
       }}
     >
       
@@ -274,13 +267,13 @@ export default function ChatNode({ data, id, isConnectable }) {
       </div>
 
       {/* Resize Handle - Bottom Right Corner with dedicated hit area */}
+      {/* When collapsed, make hit area smaller to avoid overlapping with collapse button */}
       <div 
         ref={resizeHandleRef}
-        className="absolute bottom-0 right-0 w-12 h-12 z-[60] cursor-nwse-resize nodrag nopan"
+        className={`absolute bottom-0 right-0 cursor-nwse-resize nodrag nopan ${isCollapsed ? 'w-8 h-8 z-[55]' : 'w-12 h-12 z-[60]'}`}
         onMouseDown={handleResizeStart}
-        onDoubleClick={handleResizeReset}
         onClick={(e) => e.stopPropagation()}
-        title="Resize Node (Double-click to reset to auto size)"
+        title="Resize Node"
       >
         {/* Visual handle - curved corner indicator */}
         <div className="absolute bottom-0 right-0 w-10 h-8 flex items-end justify-end p-2 pointer-events-none">
@@ -354,7 +347,7 @@ export default function ChatNode({ data, id, isConnectable }) {
           
           <button 
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors rounded-full p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors rounded-full p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 relative z-[70]"
           >
             {isCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
           </button>
@@ -373,7 +366,7 @@ export default function ChatNode({ data, id, isConnectable }) {
           )}
 
           {!hasSent && (
-            <div className="p-5 relative mt-auto">
+            <div className="p-5 relative mt-auto flex-shrink-0">
               <textarea
                 ref={textareaRef}
                 value={input}
