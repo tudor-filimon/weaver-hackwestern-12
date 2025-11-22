@@ -1,35 +1,50 @@
 from typing import Optional
+from dotenv import load_dotenv
 from google import genai
 from schema.schemas import LLMServiceRequest, LLMServiceResponse, LLMNodeContext
 from database import supabase
 from datetime import datetime
 import os
+load_dotenv() # this must exist before genai.configure()
+
 
 class LLMService:
     """Service layer for LLM operations"""
     
     def __init__(self):
-        self.client = genai.Client()
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY must be set in environment variables")
+        self.client = genai.Client(api_key=api_key)  # Pass API key here
         self.default_model = "gemini-2.5-flash-lite"
         self.default_temperature = 0.2
         self.default_max_tokens = 2048
-    
-    def _get_node_context(self, node_id: int) -> Optional[LLMNodeContext]:
+        
+    def _get_node_context(self, node_id: str) -> Optional[LLMNodeContext]:
         """Fetch node data from database to use as context"""
         try:
+            # Query by 'id' column (not 'node_id') - your database uses 'id' for the node identifier
             result = supabase.table("nodes").select("*").eq("id", node_id).execute()
+            
             if result.data and len(result.data) > 0:
                 node = result.data[0]
+                
+                # Your database has fields directly on the node object
+                # Extract them directly (not from node.data)
                 return LLMNodeContext(
                     node_id=node_id,
-                    name=node.get("name"),
-                    type=node.get("type"),
-                    content=node.get("data", {}).get("content") if isinstance(node.get("data"), dict) else None,
-                    data=node.get("data")
+                    title=node.get("title"),
+                    role=node.get("role"),
+                    content=node.get("content"),
+                    model=node.get("model"),
+                    temperature=node.get("temperature"),
+                    metadata=node.get("metadata")
                 )
             return None
         except Exception as e:
             print(f"Error fetching node context: {e}")
+            import traceback
+            traceback.print_exc()
             return None
     
     def _build_prompt(self, request: LLMServiceRequest, node_context: Optional[LLMNodeContext]) -> str:
@@ -39,16 +54,15 @@ class LLMService:
         # Add node context if available
         if node_context:
             context_text = f"Node Information:\n"
-            if node_context.name:
-                context_text += f"- Name: {node_context.name}\n"
-            if node_context.type:
-                context_text += f"- Type: {node_context.type}\n"
+            if node_context.title:
+                context_text += f"- Title: {node_context.title}\n"
+            if node_context.role:
+                context_text += f"- Role: {node_context.role}\n"
             if node_context.content:
                 context_text += f"- Content: {node_context.content}\n"
-            
             prompt_parts.append(context_text)
             prompt_parts.append("\n---\n\n")
-        
+
         # Add user prompt
         prompt_parts.append(request.prompt)
         
@@ -79,17 +93,10 @@ class LLMService:
             # Build prompt with context
             full_prompt = self._build_prompt(request, node_context)
             
-            # Prepare generation config
-            generation_config = {
-                "temperature": request.temperature or self.default_temperature,
-                "max_output_tokens": request.max_tokens or self.default_max_tokens
-            }
             
-            # Call Gemini API
             response = self.client.models.generate_content(
                 model=self.default_model,
                 contents=full_prompt,
-                generation_config=generation_config
             )
             
             # Extract metadata if available
@@ -119,7 +126,7 @@ class LLMService:
                 timestamp=datetime.now()
             )
     
-    async def enhance_node_content(self, node_id: int, prompt: str, operation_type: str = "enhance") -> LLMServiceResponse:
+    async def enhance_node_content(self, node_id: str, prompt: str, operation_type: str = "enhance") -> LLMServiceResponse:
         """
         Convenience method for enhancing node content
         
@@ -138,3 +145,4 @@ class LLMService:
 
 # Create singleton instance
 llm_service = LLMService()
+

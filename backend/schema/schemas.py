@@ -355,7 +355,7 @@ class FlowReset(BaseModel):
     flow_id: UUID
 
 
-# ---------------------------- GPT Schemas ----------------------------------#  
+# ---------------------------- GPT Schemas - MIGHT BE REDUNDANT ----------------------------------#  
 class GPTRequest(BaseModel):
     prompt: str
     context: Optional[Dict[str, Any]] = None
@@ -367,3 +367,32 @@ class GPTResponse(BaseModel):
     status: str
     metadata: Optional[Dict[str, Any]] = None
 
+# ---------------------------- LLM Service Schemas (for Gemini API) ----------------------------------#
+class LLMNodeContext(BaseModel):
+    """Context information from a node for LLM processing"""
+    node_id: str
+    title: Optional[str] = None
+    role: Optional[str] = None  # Will be NodeRole enum value as string
+    content: Optional[str] = None
+    model: Optional[str] = None
+    temperature: Optional[float] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class LLMServiceRequest(BaseModel):
+    """Request to generate content using LLM with node context"""
+    node_id: str  # React Flow node ID (string)
+    prompt: str
+    temperature: Optional[float] = None
+    max_tokens: Optional[int] = None
+    operation_type: Optional[str] = None  # e.g., "enhance", "expand", "summarize"
+
+
+class LLMServiceResponse(BaseModel):
+    """Response from LLM service"""
+    success: bool
+    node_id: str
+    generated_content: Optional[str] = None
+    error: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+    timestamp: datetime
