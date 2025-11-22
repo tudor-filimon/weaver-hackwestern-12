@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Path
 from typing import List
-from schema.schemas import BoardBase
+from schema.schemas import BoardBase, BoardCreate, BoardUpdate
 from database import supabase
 import uuid
 
@@ -29,7 +29,7 @@ async def list_boards():
 
 # CREATE a new board
 @router.post("/", response_model=BoardBase)
-async def create_board(board_data: BoardBase):
+async def create_board(board_data: BoardCreate):
     """Create a new board"""
     try:
         board_id = f"board-{uuid.uuid4().hex[:8]}"
@@ -70,7 +70,7 @@ async def get_board(board_id: str = Path(..., description="Board ID")):
 @router.patch("/{board_id}", response_model=BoardBase)
 async def update_board(
     board_id: str = Path(..., description="Board ID"),
-    board_data: BoardBase = None
+    board_data: BoardUpdate = None
 ):
     """Update board name"""
     try:

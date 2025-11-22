@@ -89,6 +89,12 @@ class BoardBase(BaseModel):
     id: str
     name: str
 
+class BoardCreate(BaseModel):
+    name: str
+
+class BoardUpdate(BaseModel):
+    name: Optional[str] = None
+
 # ---------------------------- Database Node Schemas (for Supabase storage) ----------------------------------#
 
 class NodeBase(BaseModel):
