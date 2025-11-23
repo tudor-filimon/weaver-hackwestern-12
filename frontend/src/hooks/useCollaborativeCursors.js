@@ -3,13 +3,14 @@ import { useReactFlow } from "@xyflow/react";
 
 export function useCollaborativeCursors(boardId, sendWebSocketMessage) {
   const reactFlowInstance = useReactFlow();
-  const { getViewport } = reactFlowInstance;
+  const { screenToFlowPosition, getViewport } = reactFlowInstance;
   const [otherUsersCursors, setOtherUsersCursors] = useState(new Map());
-  const cursorUpdateTimerRef = useRef(null);
+  const animationFrameRef = useRef(null);
   const userIdRef = useRef(
     `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   );
   const lastSentPositionRef = useRef(null);
+  const pendingPositionRef = useRef(null);
 
   const userColors = [
     "#FF6B6B",
@@ -31,61 +32,70 @@ export function useCollaborativeCursors(boardId, sendWebSocketMessage) {
     return userColorMapRef.current.get(userId);
   }, []);
 
-  // Track and send cursor position
+  // Track and send cursor position - optimized for minimal delay
   useEffect(() => {
     if (!sendWebSocketMessage || !boardId) return;
 
     const handleMouseMove = (event) => {
-      if (cursorUpdateTimerRef.current) {
-        clearTimeout(cursorUpdateTimerRef.current);
-      }
+      // Store the latest position
+      pendingPositionRef.current = { clientX: event.clientX, clientY: event.clientY };
 
-      cursorUpdateTimerRef.current = setTimeout(() => {
-        try {
-          // Get the React Flow pane element to calculate relative coordinates
-          const reactFlowPane = document.querySelector(".react-flow__pane");
-          if (!reactFlowPane) {
-            return; // React Flow not ready yet
-          }
+      // Use requestAnimationFrame for smooth, low-latency updates
+      if (!animationFrameRef.current) {
+        animationFrameRef.current = requestAnimationFrame(() => {
+          animationFrameRef.current = null;
+          
+          if (!pendingPositionRef.current) return;
 
-          const rect = reactFlowPane.getBoundingClientRect();
-          const viewport = getViewport();
-
-          // Calculate relative position within the React Flow pane
-          const relativeX = event.clientX - rect.left;
-          const relativeY = event.clientY - rect.top;
-
-          // Convert to flow coordinates using viewport transform
-          // Flow coordinates = (screen coordinates / zoom) - pan offset
-          const flowX = relativeX / viewport.zoom - viewport.x;
-          const flowY = relativeY / viewport.zoom - viewport.y;
-
-          const flowPosition = { x: flowX, y: flowY };
-
-          const lastPos = lastSentPositionRef.current;
-          if (
-            !lastPos ||
-            Math.abs(lastPos.x - flowPosition.x) > 10 ||
-            Math.abs(lastPos.y - flowPosition.y) > 10
-          ) {
-            sendWebSocketMessage({
-              type: "cursor_moved",
-              cursor_data: {
-                user_id: userIdRef.current,
-                x: flowPosition.x,
-                y: flowPosition.y,
-                timestamp: Date.now(),
-              },
+          try {
+            // Get the React Flow pane to calculate relative coordinates
+            const paneElement = document.querySelector('.react-flow__pane');
+            if (!paneElement) return;
+            
+            const paneRect = paneElement.getBoundingClientRect();
+            
+            // Convert window coordinates to pane-relative coordinates
+            const paneRelativeX = pendingPositionRef.current.clientX - paneRect.left;
+            const paneRelativeY = pendingPositionRef.current.clientY - paneRect.top;
+            
+            // Use React Flow's built-in coordinate conversion with pane-relative coordinates
+            const flowPosition = screenToFlowPosition({
+              x: paneRelativeX,
+              y: paneRelativeY,
             });
-            lastSentPositionRef.current = flowPosition;
+
+            const lastPos = lastSentPositionRef.current;
+            // Only send if cursor moved more than 5px
+            if (
+              !lastPos ||
+              Math.abs(lastPos.x - flowPosition.x) > 5 ||
+              Math.abs(lastPos.y - flowPosition.y) > 5
+            ) {
+              sendWebSocketMessage({
+                type: "cursor_moved",
+                cursor_data: {
+                  user_id: userIdRef.current,
+                  x: flowPosition.x,
+                  y: flowPosition.y,
+                  timestamp: Date.now(),
+                },
+              });
+              lastSentPositionRef.current = flowPosition;
+            }
+          } catch (error) {
+            console.error("Error sending cursor position:", error);
           }
-        } catch (error) {
-          console.error("Error sending cursor position:", error);
-        }
-      }, 100);
+        });
+      }
     };
 
     const handleMouseLeave = () => {
+      // Cancel pending animation frame
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      
       // Send null position when mouse leaves the canvas
       sendWebSocketMessage({
         type: "cursor_moved",
@@ -97,20 +107,21 @@ export function useCollaborativeCursors(boardId, sendWebSocketMessage) {
         },
       });
       lastSentPositionRef.current = null;
+      pendingPositionRef.current = null;
     };
 
-    // Track mouse movement on the entire window (React Flow will handle coordinate conversion)
-    window.addEventListener("mousemove", handleMouseMove);
+    // Track mouse movement on the entire window
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
     window.addEventListener("mouseleave", handleMouseLeave);
 
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseleave", handleMouseLeave);
-      if (cursorUpdateTimerRef.current) {
-        clearTimeout(cursorUpdateTimerRef.current);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [sendWebSocketMessage, boardId, getViewport]);
+  }, [sendWebSocketMessage, boardId, screenToFlowPosition]);
 
   // Handle incoming cursor updates
   const handleCursorMoved = useCallback((message) => {

@@ -30,7 +30,7 @@ function Flow() {
   // Define handlers first so we can pass them to initial state if needed,
   // but typically we inject them via effects or map over state.
 
-  const { fitView, getNode, getViewport, setCenter, screenToFlowPosition } =
+  const { fitView, getNode, getViewport, setCenter, screenToFlowPosition, flowToScreenPosition } =
     useReactFlow();
   const [edges, setEdges] = useState([]);
   const [colorMode, setColorMode] = useState("dark");
@@ -1275,44 +1275,48 @@ function Flow() {
             />
             <MiniMap />
 
-            {/* Render other users' cursors */}
-            {Array.from(otherUsersCursors.entries()).map(([userId, cursor]) => (
-              <div
-                key={userId}
-                className="absolute pointer-events-none z-50"
-                style={{
-                  left: `${cursor.x}px`,
-                  top: `${cursor.y}px`,
-                  transform: "translate(-50%, -50%)",
-                  transition: "left 0.1s ease-out, top 0.1s ease-out",
-                }}
-              >
-                {/* Cursor dot */}
+            {/* Render other users' cursors - convert flow coordinates to screen coordinates */}
+            {Array.from(otherUsersCursors.entries()).map(([userId, cursor]) => {
+              // Convert flow coordinates to screen coordinates (relative to pane)
+              const screenPosition = flowToScreenPosition({ x: cursor.x, y: cursor.y });
+              
+              return (
                 <div
-                  className="text-2xl leading-none"
+                  key={userId}
+                  className="absolute pointer-events-none z-50"
                   style={{
-                    color: getColorForUser(userId),
-                    filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5))",
+                    left: `${screenPosition.x}px`,
+                    top: `${screenPosition.y}px`,
+                    transform: "translate(-50%, -50%)",
                   }}
                 >
-                  ●
+                  {/* Cursor dot */}
+                  <div
+                    className="text-2xl leading-none"
+                    style={{
+                      color: getColorForUser(userId),
+                      filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5))",
+                    }}
+                  >
+                    ●
+                  </div>
+                  {/* User label */}
+                  <div
+                    className="mt-1 px-2 py-1 rounded text-xs font-medium whitespace-nowrap"
+                    style={{
+                      backgroundColor: getColorForUser(userId),
+                      color: "#FFFFFF",
+                      boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
+                      transform: "translateX(-50%)",
+                      position: "relative",
+                      left: "50%",
+                    }}
+                  >
+                    {userId.substring(0, 8)}...
+                  </div>
                 </div>
-                {/* User label */}
-                <div
-                  className="mt-1 px-2 py-1 rounded text-xs font-medium whitespace-nowrap"
-                  style={{
-                    backgroundColor: getColorForUser(userId),
-                    color: "#FFFFFF",
-                    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
-                    transform: "translateX(-50%)",
-                    position: "relative",
-                    left: "50%",
-                  }}
-                >
-                  {userId.substring(0, 8)}...
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </ReactFlow>
           {/* Floating bn.ai text in corner */}
           <div className="absolute top-4 left-4 z-10 pointer-events-none">
