@@ -1345,29 +1345,38 @@ function Flow() {
                     // If pane exists, position relative to it; otherwise use screenPosition directly
                     left: paneRect ? `${screenPosition.x}px` : `${screenPosition.x}px`,
                     top: paneRect ? `${screenPosition.y}px` : `${screenPosition.y}px`,
-                    transform: "translate(-50%, -50%)",
+                    transform: "translate(-3px, -3px)",
                   }}
                 >
-                  {/* Cursor dot */}
-                  <div
-                    className="text-2xl leading-none"
+                  {/* Cursor pointer */}
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
                     style={{
-                      color: getColorForUser(userId),
-                      filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5))",
+                      filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4))",
                     }}
                   >
-                    ●
-                  </div>
+                    <path
+                      d="M3 3L10.07 19.97L12.58 12.58L19.97 10.07L3 3Z"
+                      fill={getColorForUser(userId)}
+                      stroke="white"
+                      strokeWidth="1.5"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
                   {/* User label */}
                   <div
-                    className="mt-1 px-2 py-1 rounded text-xs font-medium whitespace-nowrap"
+                    className="px-2 py-1 rounded text-xs font-medium whitespace-nowrap"
                     style={{
                       backgroundColor: getColorForUser(userId),
                       color: "#FFFFFF",
                       boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
-                      transform: "translateX(-50%)",
-                      position: "relative",
-                      left: "50%",
+                      position: "absolute",
+                      left: "24px",
+                      top: "0px",
                     }}
                   >
                     {userId.substring(0, 8)}...
