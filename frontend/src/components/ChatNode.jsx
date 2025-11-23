@@ -31,7 +31,6 @@ const ChatMessage = ({ role, content }) => (
   </div>
 );
 
-// Helper for the side controls (Handle + Add Button)
 const SideControl = ({ position, isConnectable, onAddNode, isCollapsed }) => {
   // Invisible Hit Area - positioned to just cover the edge and extend outward
   // Extended to accommodate the sliding button without losing hover
@@ -184,7 +183,7 @@ const SideControl = ({ position, isConnectable, onAddNode, isCollapsed }) => {
                 left: "0",
                 transform: "translateY(-50%)",
                 width: "20px",
-                height: "40px",
+                height: "40px", 
               }
             : {
                 top: "50%",
