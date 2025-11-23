@@ -476,47 +476,43 @@ export default function ChatNode({ data, id, isConnectable }) {
       )}
 
       {/* Resize Handle - Bottom Right Corner with dedicated hit area */}
-      {/* When collapsed, make hit area smaller to avoid overlapping with collapse button */}
-      <div
-        ref={resizeHandleRef}
-        className={`absolute bottom-0 right-0 cursor-nwse-resize nodrag nopan ${
-          isCollapsed ? "w-8 h-8 z-[55]" : "w-12 h-12 z-[60]"
-        }`}
-        onMouseDown={handleResizeStart}
-        onClick={(e) => e.stopPropagation()}
-        title="Resize Node"
-      >
-        {/* Visual handle - curved corner indicator */}
-        <div className="absolute bottom-0 right-0 w-10 h-8 flex items-end justify-end p-2 pointer-events-none">
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className={
-              isStarred
-                ? "text-yellow-400"
-                : "text-neutral-200 dark:text-neutral-800"
-            }
-          >
-            {/* Arc following the rounded corner - 15% shorter, matches border color */}
-            <path
-              d="M 17.3 3.7 A 16 16 0 0 1 3.7 17.3"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeLinecap="round"
+      {/* Hidden when collapsed to avoid visual clutter */}
+      {!isCollapsed && (
+        <div
+          ref={resizeHandleRef}
+          className="absolute bottom-0 right-0 w-12 h-12 z-[60] cursor-nwse-resize nodrag nopan"
+          onMouseDown={handleResizeStart}
+          onClick={(e) => e.stopPropagation()}
+          title="Resize Node"
+        >
+          {/* Visual handle - curved corner indicator */}
+          <div className="absolute bottom-0 right-0 w-10 h-8 flex items-end justify-end p-2 pointer-events-none">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
               fill="none"
-            />
-          </svg>
+              xmlns="http://www.w3.org/2000/svg"
+              className="text-neutral-200 dark:text-neutral-800"
+            >
+              {/* Arc following the rounded corner - 15% shorter, matches border color */}
+              <path
+                d="M 17.3 3.7 A 16 16 0 0 1 3.7 17.3"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                fill="none"
+              />
+            </svg>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Header */}
       <div
         className={`drag-handle px-5 py-4 flex items-center justify-between ${
           isCollapsed ? "rounded-b-[2rem]" : ""
-        } cursor-grab active:cursor-grabbing`}
+        } cursor-grab active:cursor-grabbing relative z-50`}
       >
         <div className="flex items-center gap-2">
           <GripVertical size={16} className="text-neutral-400" />
@@ -586,31 +582,38 @@ export default function ChatNode({ data, id, isConnectable }) {
           </button>
 
           <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors rounded-full p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 relative z-[70]"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsCollapsed(!isCollapsed);
+            }}
+            className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-all duration-200 rounded-full p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:scale-110 relative z-[70]"
+            title={isCollapsed ? "Expand" : "Collapse"}
           >
             {isCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
           </button>
         </div>
       </div>
 
-      {/* Content Area */}
-      {!isCollapsed && (
-        <div className={`flex flex-col ${nodeHeight ? "flex-1 min-h-0" : ""}`}>
-          {messages.length > 0 && (
-            <div
-              className={`p-5 ${
-                nodeHeight ? "flex-1 overflow-y-auto min-h-0" : ""
-              } custom-scrollbar`}
-            >
-              {messages.map((msg, idx) => (
-                <ChatMessage key={idx} role={msg.role} content={msg.content} />
-              ))}
-            </div>
-          )}
+      {/* Content Area with Collapse Animation */}
+      <div
+        className={`flex flex-col flex-1 min-h-0 overflow-hidden transition-all duration-300 ease-in-out ${
+          isCollapsed ? "max-h-0 opacity-0" : "max-h-[2000px] opacity-100"
+        }`}
+      >
+        {messages.length > 0 && (
+          <div
+            className={`p-5 ${
+              nodeHeight ? "flex-1 overflow-y-auto min-h-0" : ""
+            } custom-scrollbar`}
+          >
+            {messages.map((msg, idx) => (
+              <ChatMessage key={idx} role={msg.role} content={msg.content} />
+            ))}
+          </div>
+        )}
 
-          {!hasSent && (
-            <div className="p-5 relative mt-auto flex-shrink-0">
+        {!hasSent && (
+          <div className="p-5 relative mt-auto flex-shrink-0">
               <textarea
                 ref={textareaRef}
                 value={input}
@@ -639,8 +642,7 @@ export default function ChatNode({ data, id, isConnectable }) {
               </button>
             </div>
           )}
-        </div>
-      )}
+      </div>
     </div>
   );
 }
