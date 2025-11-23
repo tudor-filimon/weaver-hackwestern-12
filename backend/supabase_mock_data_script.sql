@@ -1,10 +1,9 @@
 -- ============================================================================
 -- Mock Data Insert Script for Supabase
--- Inserts: 1 board, 5 nodes, 4 edges, 5 chat_messages
+-- Inserts: 1 board, 5 nodes, 4 edges
 -- ============================================================================
 
 -- Clear existing data (optional - uncomment if you want to reset)
--- DELETE FROM chat_messages;
 -- DELETE FROM edges;
 -- DELETE FROM nodes;
 -- DELETE FROM boards;
@@ -167,63 +166,6 @@ INSERT INTO edges (
     );
 
 -- ============================================================================
--- INSERT CHAT_MESSAGES (unchanged - still uses content)
--- ============================================================================
-INSERT INTO chat_messages (
-    id, board_id, node_id, role, content, model, temperature, meta
-) VALUES
-    (
-        'chat-001',
-        'board-001',
-        'node-001',
-        'user',
-        'We want to build a new AI-powered note-taking app',
-        'gemini-2.0-flash-exp',
-        0.7,
-        '{}'::jsonb
-    ),
-    (
-        'chat-002',
-        'board-001',
-        'node-002',
-        'assistant',
-        'Key features: voice notes, auto-summarization, smart tags',
-        'gemini-2.0-flash-exp',
-        0.7,
-        '{"tokens_used": 150, "latency_ms": 1200}'::jsonb
-    ),
-    (
-        'chat-003',
-        'board-001',
-        'node-003',
-        'assistant',
-        'Primary users: students, researchers, knowledge workers',
-        'gemini-2.0-flash-exp',
-        0.7,
-        '{"tokens_used": 120, "latency_ms": 980}'::jsonb
-    ),
-    (
-        'chat-004',
-        'board-001',
-        'node-004',
-        'user',
-        'React + FastAPI + Supabase + Gemini API',
-        'gemini-2.0-flash-exp',
-        0.7,
-        '{}'::jsonb
-    ),
-    (
-        'chat-005',
-        'board-001',
-        'node-005',
-        'assistant',
-        'Phase 1: Core note-taking (4 weeks), Phase 2: AI features (6 weeks)',
-        'gemini-2.0-flash-exp',
-        0.7,
-        '{"tokens_used": 180, "latency_ms": 1500}'::jsonb
-    );
-
--- ============================================================================
 -- VERIFICATION QUERIES (Optional - run these to verify the data)
 -- ============================================================================
 
@@ -236,9 +178,6 @@ INSERT INTO chat_messages (
 -- Check edge count
 -- SELECT COUNT(*) as edge_count FROM edges;
 
--- Check chat message count
--- SELECT COUNT(*) as chat_count FROM chat_messages;
-
 -- View full board structure
 -- SELECT 
 --     b.id as board_id,
@@ -250,6 +189,5 @@ INSERT INTO chat_messages (
 --     n.context as node_context,  -- NEW
 -- FROM boards b
 -- LEFT JOIN nodes n ON n.board_id = b.id
--- LEFT JOIN chat_messages cm ON cm.node_id = n.id
 -- WHERE b.id = 'board-001'
 -- ORDER BY n.x, n.y;

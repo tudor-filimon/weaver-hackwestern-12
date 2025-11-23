@@ -244,13 +244,12 @@ class ChatResponse(BaseModel):
 
 # ---------------------------- Branch API Schemas ----------------------------------#
 class BranchHighlightRequest(BaseModel):
-    # POST /api/boards/:boardId/nodes/branch/highlight
-    
-    board_id: UUID
-    source_node_id: str  # React Flow node ID
-    highlighted_text: str
-    new_node_data: Optional[Dict[str, Any]] = None
-    position: Optional[Position] = None
+    """Request to create a branch node from highlighted text"""
+    source_node_id: str  # Parent node ID where text was highlighted
+    highlighted_text: str  # The text that was highlighted
+    user_question: str  # User's question about the highlighted text
+    position: Optional[Position] = None  # Optional position for new node
+    auto_generate: bool = True  # Whether to immediately call LLM with the question
 
 
 class BranchFullRequest(BaseModel):

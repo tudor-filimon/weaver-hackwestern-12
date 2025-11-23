@@ -101,3 +101,37 @@ def update_node_context(node_id: str, board_id: str) -> Optional[str]:
     except Exception as e:
         print(f"Error updating node context: {e}")
         return None
+
+# Add this function to handle highlighted text in context
+def build_context_with_highlight(parent_node_id: str, highlighted_text: str, board_id: str) -> str:
+    """
+    Build context that emphasizes highlighted text from parent.
+    """
+    # Get parent node's full conversation
+    parent_result = supabase.table("nodes").select("prompt, response, context").eq("id", parent_node_id).execute()
+    
+    if not parent_result.data:
+        return None
+    
+    parent = parent_result.data[0]
+    
+    context_parts = []
+    
+    # Add parent's existing context (if any)
+    if parent.get("context"):
+        context_parts.append(parent["context"])
+        context_parts.append("\n" + "=" * 50 + "\n")
+    
+    # Add parent's conversation
+    if parent.get("prompt"):
+        context_parts.append(f"Parent Node - User: {parent['prompt']}")
+    if parent.get("response"):
+        context_parts.append(f"Parent Node - Assistant: {parent['response']}")
+    
+    # Emphasize the highlighted portion
+    context_parts.append("\n" + "=" * 50)
+    context_parts.append("=== HIGHLIGHTED TEXT (Focus on this) ===")
+    context_parts.append(f'"{highlighted_text}"')
+    context_parts.append("=" * 50 + "\n")
+    
+    return "\n".join(context_parts)
