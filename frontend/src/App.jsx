@@ -1378,7 +1378,7 @@ function Flow() {
             {/* Connection status */}
             {isConnected && (
               <div className="text-xs mt-1 font-mono text-green-500">
-                ● Connected ({otherUsersCount} {otherUsersCount === 1 ? 'other' : 'others'} online)
+                ● Connected ({otherUsersCount} {otherUsersCount === 1 ? 'user' : 'users'} online)
               </div>
             )}
             {!isConnected && (
