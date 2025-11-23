@@ -34,6 +34,7 @@ function Flow() {
   // ********** NEW CODE HERE **********
   const [boardId, setBoardId] = useState("board-001"); // Default board ID. First one it opens when website opens
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingFading, setIsLoadingFading] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [currentBoardName, setCurrentBoardName] = useState(null);
 
@@ -465,12 +466,23 @@ function Flow() {
 
         setNodes((nds) => nds.concat(newNodeLocal));
         setEdges((eds) => addEdge(newEdgeLocal, eds));
+
+        // Smoothly animate to the new node
+        setTimeout(() => {
+          const nodeWidth = NODE_WIDTH;
+          const nodeHeight = NODE_HEIGHT;
+          setCenter(
+            finalPosition.x + nodeWidth / 2,
+            finalPosition.y + nodeHeight / 2,
+            { zoom: 1.2, duration: 400 }
+          );
+        }, 0);
       } catch (error) {
         console.error("Error creating node/edge:", error);
         alert(`Failed to create node: ${error.message}`);
       }
     },
-    [findEmptySpace, setEdges, boardId]
+    [findEmptySpace, setEdges, boardId, setCenter]
   );
 
   // Helper to get opposite direction for target handle
@@ -493,6 +505,7 @@ function Flow() {
   const loadBoardData = useCallback(async () => {
     try {
       setIsLoading(true);
+      setIsLoadingFading(false);
       console.log("Loading board:", boardId);
 
       // Call the GET endpoint
@@ -553,6 +566,7 @@ function Flow() {
         source: edge.source_node_id,
         target: edge.target_node_id,
         type: edge.edge_type || "default",
+        style: { strokeWidth: 2 },
       }));
 
       console.log("Converted nodes:", flowNodes);
@@ -568,7 +582,13 @@ function Flow() {
       setNodes([]);
       setEdges([]);
     } finally {
-      setIsLoading(false);
+      // Trigger fade-out animation
+      setIsLoadingFading(true);
+      // After fade animation completes, hide loading screen
+      setTimeout(() => {
+        setIsLoading(false);
+        setIsLoadingFading(false);
+      }, 500); // Match the fade duration
     }
   }, [boardId, handleAddConnectedNode]);
 
@@ -1055,17 +1075,36 @@ function Flow() {
       colorMode={colorMode}
     >
       {isLoading ? (
-        <div className="flex items-center justify-center h-screen">
-          <p className="text-neutral-600 dark:text-neutral-400">
-            Loading board...
-          </p>
+        <div
+          className={`flex items-center justify-center h-screen transition-opacity duration-500 ${
+            isLoadingFading ? "opacity-0" : "opacity-100"
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            {/* Spinning Logo */}
+            <img
+              src="/bnlogo.svg"
+              alt="bn.ai logo"
+              className="w-6 h-6 animate-spin brightness-0 dark:brightness-0 dark:invert"
+            />
+            {/* bn.ai text */}
+            <h1
+              className="text-xl font-semibold text-neutral-900 dark:text-neutral-200"
+              style={{
+                fontFamily: "'Azeret Mono', monospace",
+                fontWeight: 600,
+              }}
+            >
+              bn.ai
+            </h1>
+          </div>
         </div>
       ) : (
         <>
           <Hotbar
             onAddNode={onAddNode}
             onClear={onClear}
-            onFitView={() => fitView()}
+            onFitView={() => fitView({ duration: 400 })}
             onSearch={onSearch}
             onToggleTheme={toggleColorMode}
             colorMode={colorMode}
@@ -1077,11 +1116,19 @@ function Flow() {
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             nodeTypes={nodeTypes}
+            defaultEdgeOptions={{
+              style: { strokeWidth: 2 }
+            }}
             fitView
             proOptions={{ hideAttribution: true }}
             colorMode={colorMode}
           >
-            <Background />
+            <Background
+              bgColor={colorMode === "dark" ? "#0f0f0f" : "#f5f5f5"}
+              color={colorMode === "dark" ? "#3a3a3a" : "#b0b0b0"}
+              gap={20}
+              size={1}
+            />
             <MiniMap />
           </ReactFlow>
           {/* Floating bn.ai text in corner */}
