@@ -1387,15 +1387,16 @@ function Flow() {
             >
               weaver
             </h1>
-
-            {/* Connection status */}
+          </div>
+          {/* Connection status - bottom left */}
+          <div className="absolute bottom-4 left-4 z-10 pointer-events-none">
             {isConnected && (
-              <div className="text-xs mt-1 font-mono text-green-500">
+              <div className="text-xs font-mono text-green-500">
                 ● Connected ({otherUsersCount} {otherUsersCount === 1 ? 'other' : 'others'} online)
               </div>
             )}
             {!isConnected && (
-              <div className="text-xs mt-1 font-mono text-red-500">
+              <div className="text-xs font-mono text-red-500">
                 ● Disconnected
               </div>
             )}
