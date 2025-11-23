@@ -1211,14 +1211,35 @@ function Flow() {
       if (currentNodes.length === 0) return currentNodes;
 
       const GRID_SIZE = 50; // Grid spacing in pixels
-      const NODE_WIDTH = 400;
-      const NODE_HEIGHT = 200;
-      const HORIZONTAL_SPACING = NODE_WIDTH + 100; // Space between nodes horizontally
-      const VERTICAL_SPACING = NODE_HEIGHT + 100; // Space between nodes vertically
+      const DEFAULT_NODE_WIDTH = 450; // Match minWidth from ChatNode
+      const DEFAULT_NODE_HEIGHT = 200;
+      const MIN_SPACING = 100; // Minimum space between nodes (increased to prevent overlap)
+
+      // Get actual dimensions for each node, accounting for dynamic sizes
+      const nodesWithDimensions = currentNodes.map((node) => {
+        // Use actual width/height from node, or defaults
+        // Note: nodes with null height are auto-height, so we estimate based on content
+        const actualWidth = node.width || DEFAULT_NODE_WIDTH;
+        // For height, if null, estimate based on messages or use default
+        // We'll use a conservative estimate for auto-height nodes
+        let actualHeight = node.height;
+        if (!actualHeight) {
+          // Estimate height based on messages count (rough estimate: ~100px per message + base)
+          const messageCount = (node.data?.messages?.length || 0);
+          const hasInput = !node.data?.isResponded;
+          actualHeight = Math.max(DEFAULT_NODE_HEIGHT, 150 + (messageCount * 80) + (hasInput ? 100 : 0));
+        }
+        
+        return {
+          ...node,
+          actualWidth,
+          actualHeight,
+        };
+      });
 
       // Find the minimum x and y positions to start the grid from
-      const minX = Math.min(...currentNodes.map((n) => n.position.x));
-      const minY = Math.min(...currentNodes.map((n) => n.position.y));
+      const minX = Math.min(...nodesWithDimensions.map((n) => n.position.x));
+      const minY = Math.min(...nodesWithDimensions.map((n) => n.position.y));
 
       // Snap the starting position to grid
       const startX = Math.floor(minX / GRID_SIZE) * GRID_SIZE;
@@ -1227,15 +1248,65 @@ function Flow() {
       // Calculate grid layout: arrange nodes in a grid pattern
       const nodesPerRow = Math.ceil(Math.sqrt(currentNodes.length));
       
-      const updatedNodes = currentNodes.map((node, index) => {
+      // Calculate maximum width and height for each row/column to prevent overlap
+      const rowHeights = [];
+      const colWidths = [];
+      
+      const totalRows = Math.ceil(nodesWithDimensions.length / nodesPerRow);
+      
+      for (let row = 0; row < totalRows; row++) {
+        let maxHeight = 0;
+        for (let col = 0; col < nodesPerRow; col++) {
+          const index = row * nodesPerRow + col;
+          if (index < nodesWithDimensions.length) {
+            maxHeight = Math.max(maxHeight, nodesWithDimensions[index].actualHeight);
+          }
+        }
+        rowHeights.push(maxHeight);
+      }
+      
+      for (let col = 0; col < nodesPerRow; col++) {
+        let maxWidth = 0;
+        for (let row = 0; row < totalRows; row++) {
+          const index = row * nodesPerRow + col;
+          if (index < nodesWithDimensions.length) {
+            maxWidth = Math.max(maxWidth, nodesWithDimensions[index].actualWidth);
+          }
+        }
+        colWidths.push(maxWidth);
+      }
+      
+      // Calculate cumulative positions for each row and column
+      // This ensures proper spacing based on actual node sizes
+      let currentX = startX;
+      const colPositions = [currentX];
+      for (let col = 0; col < nodesPerRow - 1; col++) {
+        // Move to next column: current position + width of current column + spacing
+        currentX += colWidths[col] + MIN_SPACING;
+        // Snap to grid
+        currentX = Math.round(currentX / GRID_SIZE) * GRID_SIZE;
+        colPositions.push(currentX);
+      }
+      
+      let currentY = startY;
+      const rowPositions = [currentY];
+      for (let row = 0; row < rowHeights.length - 1; row++) {
+        // Move to next row: current position + height of current row + spacing
+        currentY += rowHeights[row] + MIN_SPACING;
+        // Snap to grid
+        currentY = Math.round(currentY / GRID_SIZE) * GRID_SIZE;
+        rowPositions.push(currentY);
+      }
+      
+      const updatedNodes = nodesWithDimensions.map((node, index) => {
         const row = Math.floor(index / nodesPerRow);
         const col = index % nodesPerRow;
         
-        // Calculate grid-aligned position
-        const gridX = startX + col * HORIZONTAL_SPACING;
-        const gridY = startY + row * VERTICAL_SPACING;
+        // Use calculated positions based on actual node sizes
+        const gridX = colPositions[col];
+        const gridY = rowPositions[row];
         
-        // Snap to grid
+        // Snap to grid (fine adjustment)
         const snappedX = Math.round(gridX / GRID_SIZE) * GRID_SIZE;
         const snappedY = Math.round(gridY / GRID_SIZE) * GRID_SIZE;
 
@@ -1274,8 +1345,10 @@ function Flow() {
           }, 500);
         }
 
+        // Return node without the temporary actualWidth/actualHeight properties
+        const { actualWidth, actualHeight, ...nodeWithoutExtras } = node;
         return {
-          ...node,
+          ...nodeWithoutExtras,
           position: newPosition,
         };
       });
