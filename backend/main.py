@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import board
+from routes import board, websocket  
+
 
 # Fast API App
 app = FastAPI(title="bn.AI")
@@ -16,6 +17,8 @@ app.add_middleware(
 
 # Include routers
 app.include_router(board.router, prefix="/api/boards")
+app.include_router(websocket.router, prefix="/api")
+
 
 
 @app.get("/")
