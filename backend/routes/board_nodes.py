@@ -3,6 +3,7 @@ from typing import List, Optional
 from schema.schemas import NodeCreate, NodeBase, NodeUpdate, NodePosition
 from database import supabase
 from services.context_service import update_node_context
+from services.websocket_manager import manager
 
 router = APIRouter()
 
@@ -106,11 +107,37 @@ async def update_node(
             update_data = {
                 "prompt": node_data.prompt,
                 "response": llm_response.generated_content,
-                "role": "assistant"
+                "role": "assistant",
+                "is_responded": True  # NEW: Mark node as responded to
             }
             result = supabase.table("nodes").update(update_data).eq("id", id).execute()
             if not result.data:
                 raise HTTPException(status_code=500, detail="Failed to update node")
+            
+            # Build messages array for WebSocket broadcast
+            messages = []
+            if node_data.prompt:
+                messages.append({"role": "user", "content": node_data.prompt})
+            if llm_response.generated_content:
+                messages.append({"role": "assistant", "content": llm_response.generated_content})
+            
+            # Broadcast update to all clients via WebSocket
+            try:
+                await manager.broadcast_to_room(
+                    board_id,
+                    {
+                        "type": "node_updated",
+                        "node_id": id,
+                        "updates": {
+                            "messages": messages,
+                            "isResponded": True
+                        }
+                    }
+                )
+            except Exception as e:
+                print(f"Error broadcasting node update: {e}")
+                # Don't fail the request if broadcast fails
+            
             return result.data[0]
         
         # Regular update

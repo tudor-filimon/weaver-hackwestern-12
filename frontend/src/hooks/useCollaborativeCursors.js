@@ -71,16 +71,18 @@ export function useCollaborativeCursors(boardId, sendWebSocketMessage) {
               Math.abs(lastPos.x - flowPosition.x) > 5 ||
               Math.abs(lastPos.y - flowPosition.y) > 5
             ) {
-              sendWebSocketMessage({
-                type: "cursor_moved",
-                cursor_data: {
-                  user_id: userIdRef.current,
-                  x: flowPosition.x,
-                  y: flowPosition.y,
-                  timestamp: Date.now(),
-                },
-              });
-              lastSentPositionRef.current = flowPosition;
+              if (sendWebSocketMessage) {
+                sendWebSocketMessage({
+                  type: "cursor_moved",
+                  cursor_data: {
+                    user_id: userIdRef.current,
+                    x: flowPosition.x,
+                    y: flowPosition.y,
+                    timestamp: Date.now(),
+                  },
+                });
+                lastSentPositionRef.current = flowPosition;
+              }
             }
           } catch (error) {
             console.error("Error sending cursor position:", error);

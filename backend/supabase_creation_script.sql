@@ -33,6 +33,7 @@ CREATE TABLE nodes (
     is_root BOOLEAN DEFAULT FALSE,
     is_collapsed BOOLEAN DEFAULT FALSE,
     is_starred BOOLEAN DEFAULT FALSE,
+    is_responded BOOLEAN DEFAULT FALSE, -- NEW: Whether this node has been queried/responded to
     
     -- Visual / AI config
     color TEXT, -- node colour / tree colour

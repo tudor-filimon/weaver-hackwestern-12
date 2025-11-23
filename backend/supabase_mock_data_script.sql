@@ -19,7 +19,7 @@ VALUES ('board-001', 'Product Planning Canvas');
 -- ============================================================================
 INSERT INTO nodes (
     id, board_id, x, y, width, height, title, prompt, response, context, role,
-    is_root, is_collapsed, is_starred, color, icon, model, metadata
+    is_root, is_collapsed, is_starred, is_responded, color, icon, model, metadata
 ) VALUES
     (
         'node-001',
@@ -36,6 +36,7 @@ INSERT INTO nodes (
         TRUE,
         FALSE,
         TRUE,
+        FALSE,  -- is_responded
         '#3b82f6',
         '💡',
         'gemini-2.0-flash-exp',
@@ -56,6 +57,7 @@ INSERT INTO nodes (
         FALSE,
         FALSE,
         FALSE,
+        FALSE,  -- is_responded
         '#10b981',
         '✨',
         'gemini-2.0-flash-exp',

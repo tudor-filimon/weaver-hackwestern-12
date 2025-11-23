@@ -302,12 +302,14 @@ const UniversalHandle = ({ position, isConnectable }) => (
 export default function ChatNode({ data, id, isConnectable }) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState(data.messages || []);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(data.isCollapsed || false);
   const [model, setModel] = useState(data.model || "gemini-pro");
-  const [hasSent, setHasSent] = useState(messages.length > 0);
+  // Use is_responded from backend instead of local hasSent state
+  const isResponded = data.isResponded || false;
   const [isStarred, setIsStarred] = useState(data.isStarred || false);
   const [isLoading, setIsLoading] = useState(false);
   const [newMessageIndices, setNewMessageIndices] = useState(new Set());
+  const isWaitingForLocalResponseRef = useRef(false); // Track if we're waiting for a response we initiated
   const isRoot = data.isRoot || false;
 
   // Title editing state
@@ -330,6 +332,20 @@ export default function ChatNode({ data, id, isConnectable }) {
     setNodeWidth(data.width ?? 400);
     setNodeHeight(data.height ?? null);
   }, [data.width, data.height]);
+  
+  // Sync collapse state from data prop (for WebSocket updates)
+  useEffect(() => {
+    if (data.isCollapsed !== undefined && data.isCollapsed !== isCollapsed) {
+      setIsCollapsed(data.isCollapsed);
+    }
+  }, [data.isCollapsed]);
+  
+  // Sync title from data.label prop (for WebSocket updates)
+  useEffect(() => {
+    if (data.label && data.label !== title && !isEditingTitle) {
+      setTitle(data.label);
+    }
+  }, [data.label, isEditingTitle, title]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -350,11 +366,65 @@ export default function ChatNode({ data, id, isConnectable }) {
   // Sync local messages state with data.messages prop (for WebSocket updates)
   useEffect(() => {
     if (data.messages && JSON.stringify(data.messages) !== JSON.stringify(messages)) {
-      setMessages(data.messages || []);
-      // Clear typewriter flags for synced messages (they should display immediately)
-      setNewMessageIndices(new Set());
+      const oldMessages = messages;
+      const newMessages = data.messages || [];
+      
+      // Detect new assistant messages that weren't in the old messages
+      // This allows the typewriter effect to work for messages received from other users
+      const newAssistantIndices = new Set();
+      newMessages.forEach((newMsg, idx) => {
+        if (newMsg.role === "assistant") {
+          // Check if this is a new message (not in old messages or different content)
+          const oldMsg = oldMessages[idx];
+          if (!oldMsg || oldMsg.content !== newMsg.content) {
+            // This is a new or updated assistant message - trigger typewriter effect
+            newAssistantIndices.add(idx);
+          }
+        }
+      });
+      
+      // Check if this is an update from another user (new assistant message appeared)
+      // vs an update from the same user (we're already handling it locally)
+      const hasNewAssistantMessage = newAssistantIndices.size > 0;
+      const lastMessage = newMessages[newMessages.length - 1];
+      const isWaitingForResponse = lastMessage && lastMessage.role === "user";
+      
+      setMessages(newMessages);
+      // Set typewriter flags for new assistant messages
+      setNewMessageIndices(newAssistantIndices);
+      
+      // Clear typewriter flags after typing completes (estimate: ~20ms per character)
+      if (newAssistantIndices.size > 0) {
+        newAssistantIndices.forEach((idx) => {
+          const msg = newMessages[idx];
+          if (msg && msg.content) {
+            const typingDuration = msg.content.length * 20 + 500; // Add 500ms buffer
+            setTimeout(() => {
+              setNewMessageIndices((prev) => {
+                const next = new Set(prev);
+                next.delete(idx);
+                return next;
+              });
+            }, typingDuration);
+          }
+        });
+      }
+      
+      // Only update loading state if this is an update from another user
+      // (detected by having a new assistant message or waiting for response that we didn't initiate)
+      if (hasNewAssistantMessage) {
+        // Assistant response arrived, stop loading
+        setIsLoading(false);
+        isWaitingForLocalResponseRef.current = false; // Clear the flag
+      } else if (isWaitingForResponse && oldMessages.length < newMessages.length && !isWaitingForLocalResponseRef.current) {
+        // New user message appeared (from another user), show thinking animation
+        // Only set loading if we're not waiting for our own response
+        setIsLoading(true);
+      }
+      // If we're already loading locally (from handleSend), don't clear it here
+      // The loading state will be cleared when the response arrives
     }
-  }, [data.messages]);
+  }, [data.messages, messages]);
 
   const handleSend = useCallback(async () => {
     if (!input.trim()) return;
@@ -363,8 +433,8 @@ export default function ChatNode({ data, id, isConnectable }) {
     setMessages(newMessages);
     const currentInput = input;
     setInput("");
-    setHasSent(true);
     setIsLoading(true); // Start loading animation
+    isWaitingForLocalResponseRef.current = true; // Mark that we're waiting for our own response
 
     try {
       // Get board ID from node data or use a default
@@ -396,6 +466,7 @@ export default function ChatNode({ data, id, isConnectable }) {
       const finalMessages = [...newMessages, assistantMessage];
       setMessages(finalMessages);
       setIsLoading(false); // Stop loading animation
+      isWaitingForLocalResponseRef.current = false; // No longer waiting
       
       // Mark the new assistant message as needing typewriter effect
       setNewMessageIndices(new Set([finalMessages.length - 1]));
@@ -410,21 +481,25 @@ export default function ChatNode({ data, id, isConnectable }) {
         });
       }, typingDuration);
 
-      // Update node data with the response
+      // Update local node data to reflect isResponded
+      // Note: Backend will broadcast the update via WebSocket, so we don't need to broadcast here
+      // But we still update local state immediately for better UX
       updateNode(id, {
         data: {
           ...data,
           messages: finalMessages,
+          isResponded: true,  // NEW: Update local state
         },
       });
-
-      // Broadcast to other users
+      
+      // Also broadcast via WebSocket as a backup (backend also broadcasts, but this ensures immediate update)
       if (data.sendWebSocketMessage) {
         data.sendWebSocketMessage({
           type: "node_updated",
           node_id: id,
           updates: {
             messages: finalMessages,
+            isResponded: true,  // NEW: Mark as responded to disable input for other users
           },
         });
       }
@@ -437,6 +512,7 @@ export default function ChatNode({ data, id, isConnectable }) {
       const errorMessages = [...newMessages, errorMessage];
       setMessages(errorMessages);
       setIsLoading(false); // Stop loading animation on error
+      isWaitingForLocalResponseRef.current = false; // Clear the flag on error
       // Don't add typewriter effect for error messages
     }
   }, [input, messages, id, data, updateNode]);
@@ -548,6 +624,37 @@ export default function ChatNode({ data, id, isConnectable }) {
         setIsResizing(false);
         document.removeEventListener("mousemove", handleMouseMove);
         document.removeEventListener("mouseup", handleMouseUp);
+        
+        // Calculate final dimensions from the mouse position
+        const diffX = e.clientX - startX;
+        const diffY = e.clientY - startY;
+        const finalWidth = Math.max(350, Math.min(800, startWidth + diffX));
+        const finalHeight = Math.max(200, Math.min(1000, startHeight + diffY));
+        
+        // Update backend and broadcast (async, but don't await)
+        (async () => {
+          try {
+            const boardId = data.boardId || "board-001";
+            await nodeAPI.updateNode(boardId, id, {
+              width: finalWidth,
+              height: finalHeight,
+            });
+          } catch (error) {
+            console.error("Failed to update node size:", error);
+          }
+          
+          // Broadcast resize to other users
+          if (data.sendWebSocketMessage) {
+            data.sendWebSocketMessage({
+              type: "node_updated",
+              node_id: id,
+              updates: {
+                width: finalWidth,
+                height: finalHeight,
+              },
+            });
+          }
+        })();
       };
 
       document.addEventListener("mousemove", handleMouseMove, {
@@ -737,9 +844,31 @@ export default function ChatNode({ data, id, isConnectable }) {
           </button>
 
           <button
-            onClick={(e) => {
+            onClick={async (e) => {
               e.stopPropagation();
-              setIsCollapsed(!isCollapsed);
+              const newCollapsedState = !isCollapsed;
+              setIsCollapsed(newCollapsedState);
+              
+              // Update backend
+              try {
+                const boardId = data.boardId || "board-001";
+                await nodeAPI.updateNode(boardId, id, {
+                  is_collapsed: newCollapsedState,
+                });
+              } catch (error) {
+                console.error("Failed to update collapse state:", error);
+              }
+              
+              // Broadcast collapse state to other users
+              if (data.sendWebSocketMessage) {
+                data.sendWebSocketMessage({
+                  type: "node_updated",
+                  node_id: id,
+                  updates: {
+                    isCollapsed: newCollapsedState,
+                  },
+                });
+              }
             }}
             className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-all duration-200 rounded-full p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:scale-110 relative z-[70]"
             title={isCollapsed ? "Expand" : "Collapse"}
@@ -773,7 +902,7 @@ export default function ChatNode({ data, id, isConnectable }) {
           </div>
         )}
 
-        {!hasSent && (
+        {!isResponded && (
           <div className="p-5 relative mt-auto flex-shrink-0 nodrag">
             <textarea
               ref={textareaRef}

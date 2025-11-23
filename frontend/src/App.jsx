@@ -50,14 +50,17 @@ function Flow() {
   const sendMessageRef = useRef(null);
 
   // Get cursor state and handlers from the hook (MUST BE BEFORE useWebSocket)
-  // Pass a wrapper function that uses the ref
+  // Pass a wrapper function that uses the ref - use useCallback to make it stable
+  const sendCursorMessage = useCallback((message) => {
+    // Always check the ref to get the latest sendMessage function
+    if (sendMessageRef.current) {
+      sendMessageRef.current(message);
+    }
+  }, []); // Empty deps - function always checks the ref
+
   const { otherUsersCursors, getColorForUser, handleCursorMoved } = useCollaborativeCursors(
     boardId, 
-    (message) => {
-      if (sendMessageRef.current) {
-        sendMessageRef.current(message);
-      }
-    }
+    sendCursorMessage
   );
 
   // ********** WEBSOCKET INTEGRATION - ADD THIS **********
@@ -98,15 +101,37 @@ function Flow() {
     // Handle incoming node updates from other users (LLM responses, etc.)
     onNodeUpdated: useCallback((message) => {
       console.log("Node updated by another user:", message);
+      console.log("Updates received:", message.updates);
       setNodes((nds) =>
-        nds.map((node) =>
-          node.id === message.node_id
-            ? {
-                ...node,
-                data: { ...node.data, ...message.updates },
-              }
-            : node
-        )
+        nds.map((node) => {
+          if (node.id === message.node_id) {
+            const updates = message.updates || {};
+            const updatedData = { ...node.data, ...updates };
+            console.log(`Updating node ${node.id} with data:`, updatedData);
+            
+            // Build updated node object
+            const updatedNode = {
+              ...node,
+              data: updatedData,
+            };
+            
+            // Handle width/height updates (these are node-level properties, not data properties)
+            if (updates.width !== undefined) {
+              updatedNode.width = updates.width;
+            }
+            if (updates.height !== undefined) {
+              updatedNode.height = updates.height;
+            }
+            
+            // Handle isCollapsed (stored in data)
+            if (updates.isCollapsed !== undefined) {
+              updatedData.isCollapsed = updates.isCollapsed;
+            }
+            
+            return updatedNode;
+          }
+          return node;
+        })
       );
     }, []),
 
@@ -156,7 +181,12 @@ function Flow() {
 
     // Handle incoming cursor updates from other users
     onCursorMoved: useCallback((message) => {
-      handleCursorMoved(message);
+      console.log("[App] onCursorMoved callback called with:", message);
+      if (handleCursorMoved) {
+        handleCursorMoved(message);
+      } else {
+        console.warn("[App] handleCursorMoved is not available");
+      }
     }, [handleCursorMoved]),
   });
 
@@ -697,6 +727,8 @@ function Flow() {
           model: node.model || "gpt-4o",
           isRoot: node.is_root || false,
           isStarred: node.is_starred || false,
+          isCollapsed: node.is_collapsed || false,  // NEW: Include is_collapsed from backend
+          isResponded: node.is_responded || false,  // NEW: Include is_responded from backend
           boardId: boardId,
           onAddNode: handleAddConnectedNode,
           sendWebSocketMessage: sendMessage,

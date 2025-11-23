@@ -113,6 +113,7 @@ class NodeBase(BaseModel):
     is_root: bool = False
     is_collapsed: bool = False
     is_starred: bool = False
+    is_responded: bool = False  # NEW: Whether this node has been queried/responded to
     model: Optional[str] = None
 
 class NodeCreate(NodeBase):
@@ -129,6 +130,7 @@ class NodeCreate(NodeBase):
     is_root: bool = False
     is_collapsed: bool = False
     is_starred: bool = False
+    is_responded: bool = False  # NEW: Whether this node has been queried/responded to
 
 # Add this after NodeCreate (around line 124)
 class NodeUpdate(BaseModel):
@@ -147,6 +149,7 @@ class NodeUpdate(BaseModel):
     is_root: Optional[bool] = None
     is_collapsed: Optional[bool] = None
     is_starred: Optional[bool] = None
+    is_responded: Optional[bool] = None  # NEW: Whether this node has been queried/responded to
     model: Optional[str] = None
 
 class NodePosition(BaseModel):
