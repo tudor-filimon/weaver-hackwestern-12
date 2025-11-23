@@ -320,6 +320,7 @@ export default function ChatNode({ data, id, isConnectable }) {
   const titleInputRef = useRef(null);
   const resizeHandleRef = useRef(null);
   const nodeContainerRef = useRef(null);
+  const contentAreaRef = useRef(null);
   const { deleteElements, updateNode } = useReactFlow();
 
   // Node dimensions - default to 400px width, auto height
@@ -880,58 +881,62 @@ export default function ChatNode({ data, id, isConnectable }) {
 
       {/* Content Area with Collapse Animation */}
       <div
-        className={`flex flex-col flex-1 min-h-0 overflow-hidden transition-all duration-300 ease-in-out nodrag ${
-          isCollapsed ? "max-h-0 opacity-0" : "max-h-[2000px] opacity-100"
-        }`}
+        className="grid overflow-hidden transition-all duration-300 ease-in-out nodrag"
+        style={{
+          gridTemplateRows: isCollapsed ? '0fr' : '1fr',
+          opacity: isCollapsed ? 0 : 1,
+        }}
       >
-        {(messages.length > 0 || isLoading) && (
-          <div
-            className={`p-5 nodrag ${
-              nodeHeight ? "flex-1 overflow-y-auto min-h-0" : ""
-            } custom-scrollbar`}
-          >
-            {messages.map((msg, idx) => (
-              <ChatMessage 
-                key={idx} 
-                role={msg.role} 
-                content={msg.content}
-                isNewMessage={newMessageIndices.has(idx)}
-              />
-            ))}
-            {isLoading && <ThinkingAnimation />}
-          </div>
-        )}
-
-        {!isResponded && (
-          <div className="p-5 relative mt-auto flex-shrink-0 nodrag">
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              className="w-full bg-neutral-50 dark:bg-neutral-800/50 rounded-[1.5rem] px-4 py-3 pr-12 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-neutral-300 dark:focus:ring-neutral-700 nodrag"
-              placeholder="Ask anything..."
-              rows={1}
-              style={{ minHeight: "48px" }}
-            />
-            <button
-              onClick={handleSend}
-              disabled={!input.trim()}
-              className={`absolute right-7 bottom-[33px] p-2 rounded-full transition-all duration-200 flex items-center justify-center ${
-                input.trim()
-                  ? "bg-neutral-900 dark:bg-white text-white dark:text-black hover:scale-105"
-                  : "bg-neutral-200 dark:bg-neutral-700 text-neutral-400 cursor-not-allowed opacity-50"
-              }`}
+        <div ref={contentAreaRef} className="min-h-0 flex flex-col flex-1">
+          {(messages.length > 0 || isLoading) && (
+            <div
+              className={`p-5 nodrag ${
+                nodeHeight ? "flex-1 overflow-y-auto min-h-0" : ""
+              } custom-scrollbar`}
             >
-              <ArrowUp size={18} strokeWidth={2.5} />
-            </button>
-          </div>
-        )}
+              {messages.map((msg, idx) => (
+                <ChatMessage 
+                  key={idx} 
+                  role={msg.role} 
+                  content={msg.content}
+                  isNewMessage={newMessageIndices.has(idx)}
+                />
+              ))}
+              {isLoading && <ThinkingAnimation />}
+            </div>
+          )}
+
+          {!isResponded && (
+            <div className="p-5 relative mt-auto flex-shrink-0 nodrag">
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                className="w-full bg-neutral-50 dark:bg-neutral-800/50 rounded-[1.5rem] px-4 py-3 pr-12 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-neutral-300 dark:focus:ring-neutral-700 nodrag"
+                placeholder="Ask anything..."
+                rows={1}
+                style={{ minHeight: "48px" }}
+              />
+              <button
+                onClick={handleSend}
+                disabled={!input.trim()}
+                className={`absolute right-7 bottom-[33px] p-2 rounded-full transition-all duration-200 flex items-center justify-center ${
+                  input.trim()
+                    ? "bg-neutral-900 dark:bg-white text-white dark:text-black hover:scale-105"
+                    : "bg-neutral-200 dark:bg-neutral-700 text-neutral-400 cursor-not-allowed opacity-50"
+                }`}
+              >
+                <ArrowUp size={18} strokeWidth={2.5} />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
