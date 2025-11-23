@@ -15,13 +15,13 @@ import { nodeAPI } from "../utils/api"; // Connecting to backend
 
 const ChatMessage = ({ role, content }) => (
   <div
-    className={`flex ${role === "user" ? "justify-end" : "justify-start"} mb-3`}
+    className={`flex ${role === "user" ? "justify-end" : "justify-start"} mb-3 nodrag`}
   >
     <div
       className={`max-w-[90%] px-4 py-2.5 rounded-3xl text-sm ${
         role === "user"
-          ? "bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100"
-          : "text-neutral-800 dark:text-neutral-200"
+          ? "bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 select-none cursor-default"
+          : "text-neutral-800 dark:text-neutral-200 select-text cursor-text"
       }`}
     >
       {content}
@@ -37,10 +37,10 @@ const SideControl = ({ position, isConnectable, onAddNode, isCollapsed }) => {
   // Top hit area starts below header to avoid conflicts with header buttons
   // Right hit area starts from top but avoids delete button area in top-right corner
   const hitAreaClasses = {
-    [Position.Top]: "-top-4 left-0 w-full h-16", // Extended to h-16 (64px) to cover slide-out button
-    [Position.Right]: "-right-4 top-0 w-16 h-full", // Extended to w-16 (64px) to cover slide-out button
-    [Position.Bottom]: "-bottom-4 left-0 w-full h-16", // Extended to h-16 (64px) to cover slide-out button
-    [Position.Left]: "-left-4 top-0 w-16 h-full", // Extended to w-16 (64px) to cover slide-out button
+    [Position.Top]: "-top-4 left-0 w-full h-20", // Extended to h-20 (80px) to cover slide-out button
+    [Position.Right]: "-right-4 top-0 w-20 h-full", // Extended to w-20 (80px) to cover slide-out button
+    [Position.Bottom]: "-bottom-4 left-0 w-full h-20", // Extended to h-20 (80px) to cover slide-out button
+    [Position.Left]: "-left-4 top-0 w-20 h-full", // Extended to w-20 (80px) to cover slide-out button
   };
 
   // Get the correct style override for each position to place handle exactly on edge
@@ -151,8 +151,22 @@ const SideControl = ({ position, isConnectable, onAddNode, isCollapsed }) => {
 
   return (
     <div
-      className={`absolute ${hitAreaClasses[position]} z-40 group/hit pointer-events-auto`}
+      className={`absolute ${hitAreaClasses[position]} z-40 group/hit`}
+      style={{ pointerEvents: 'none' }}
     >
+      {/* Hover detection area - small zone around handle for hover, doesn't block text selection elsewhere */}
+      <div 
+        className="absolute cursor-pointer"
+        style={{ 
+          pointerEvents: 'auto',
+          userSelect: 'none',
+          ...(position === Position.Top || position === Position.Bottom 
+            ? { left: '50%', top: position === Position.Top ? '0' : 'auto', bottom: position === Position.Bottom ? '0' : 'auto', transform: 'translateX(-50%)', width: '60px', height: '100%' }
+            : { top: '50%', left: position === Position.Left ? '0' : 'auto', right: position === Position.Right ? '0' : 'auto', transform: 'translateY(-50%)', width: '100%', height: '60px' }
+          )
+        }}
+      />
+      
       {/* Handle - positioned exactly on the edge, directly in the hit area */}
       <Handle
         type="source"
@@ -596,13 +610,13 @@ export default function ChatNode({ data, id, isConnectable }) {
 
       {/* Content Area with Collapse Animation */}
       <div
-        className={`flex flex-col flex-1 min-h-0 overflow-hidden transition-all duration-300 ease-in-out ${
+        className={`flex flex-col flex-1 min-h-0 overflow-hidden transition-all duration-300 ease-in-out nodrag ${
           isCollapsed ? "max-h-0 opacity-0" : "max-h-[2000px] opacity-100"
         }`}
       >
         {messages.length > 0 && (
           <div
-            className={`p-5 ${
+            className={`p-5 nodrag ${
               nodeHeight ? "flex-1 overflow-y-auto min-h-0" : ""
             } custom-scrollbar`}
           >
@@ -613,7 +627,7 @@ export default function ChatNode({ data, id, isConnectable }) {
         )}
 
         {!hasSent && (
-          <div className="p-5 relative mt-auto flex-shrink-0">
+          <div className="p-5 relative mt-auto flex-shrink-0 nodrag">
               <textarea
                 ref={textareaRef}
                 value={input}
