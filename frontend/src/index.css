@@ -34,3 +34,62 @@ body {
 .animate-slide-in {
   animation: slide-in 0.3s ease-out forwards;
 }
+
+@keyframes flip-turn-accumulate {
+  0% {
+    transform: rotate(270deg);
+  }
+  25% {
+    transform: rotate(360deg);
+  }
+  50% {
+    transform: rotate(360deg);
+  }
+  75% {
+    transform: rotate(360deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-flip-turn-accumulate {
+  transform: rotate(135deg);
+  animation: flip-turn-accumulate 2.4s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+}
+
+/* MiniMap styling */
+.react-flow__minimap {
+  border-radius: 1rem !important;
+  border: 1px solid rgb(229 231 235) !important;
+  overflow: hidden !important;
+  background: white !important;
+}
+
+.dark .react-flow__minimap {
+  border-color: rgb(38 38 38) !important;
+  background: rgb(23 23 23) !important;
+}
+
+/* MiniMap viewport rectangle - rounded corners */
+.react-flow__minimap-mask {
+  rx: 8 !important;
+  ry: 8 !important;
+}
+
+.react-flow__minimap svg rect {
+  rx: 8 !important;
+  ry: 8 !important;
+}
+
+.react-flow__minimap-mask rect {
+  rx: 8 !important;
+  ry: 8 !important;
+}
+
+/* MiniMap nodes - proportional border radius */
+.react-flow__minimap-node {
+  border-radius: 0.5rem !important;
+  rx: 8 !important;
+  ry: 8 !important;
+}

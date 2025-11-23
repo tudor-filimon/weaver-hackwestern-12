@@ -177,8 +177,8 @@ export default function Sidebar({
         <div className="relative p-4 flex items-center justify-center">
           {/* Logo - Hidden on hover */}
           <img
-            src="/bnlogo.svg"
-            alt="bn.ai logo"
+            src="/weaverw.svg"
+            alt="weaver logo"
             className="w-6 h-6 brightness-0 dark:brightness-0 dark:invert opacity-100 group-hover/sidebar:opacity-0 transition-opacity duration-200"
           />
           {/* Expand Button - Shown on hover */}
@@ -228,8 +228,8 @@ export default function Sidebar({
         {/* Logo and Collapse Button */}
         <div className="relative p-4">
           <img
-            src="/bnlogo.svg"
-            alt="bn.ai logo"
+            src="/weaverw.svg"
+            alt="weaver logo"
             className="w-6 h-6 brightness-0 dark:brightness-0 dark:invert"
           />
           {/* Collapse Button - Top Right */}

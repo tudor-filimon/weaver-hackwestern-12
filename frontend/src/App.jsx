@@ -1235,19 +1235,19 @@ function Flow() {
           <div className="flex items-center gap-3">
             {/* Spinning Logo */}
             <img
-              src="/bnlogo.svg"
-              alt="bn.ai logo"
-              className="w-6 h-6 animate-spin brightness-0 dark:brightness-0 dark:invert"
+              src="/weaverw.svg"
+              alt="weaver logo"
+              className="w-6 h-6 animate-flip-turn-accumulate brightness-0 dark:brightness-0 dark:invert"
             />
-            {/* bn.ai text */}
+            {/* weaver text */}
             <h1
-              className="text-xl font-semibold text-neutral-900 dark:text-neutral-200"
+              className="text-xl text-neutral-900 dark:text-neutral-200"
               style={{
                 fontFamily: "'Azeret Mono', monospace",
-                fontWeight: 600,
+                fontWeight: 400,
               }}
             >
-              bn.ai
+              weaver
             </h1>
           </div>
         </div>
@@ -1281,7 +1281,7 @@ function Flow() {
               gap={20}
               size={1}
             />
-            <MiniMap />
+            <MiniMap pannable zoomable />
 
             {/* Render other users' cursors - convert flow coordinates to screen coordinates */}
             {Array.from(otherUsersCursors.entries()).map(([userId, cursor]) => {
@@ -1331,22 +1331,22 @@ function Flow() {
               );
             })}
           </ReactFlow>
-          {/* Floating bn.ai text in corner */}
+          {/* Floating weaver text in corner */}
           <div className="absolute top-4 left-4 z-10 pointer-events-none">
             <h1
-              className="text-xl font-semibold text-neutral-900 dark:text-neutral-200"
+              className="text-xl text-neutral-900 dark:text-neutral-200"
               style={{
                 fontFamily: "'Azeret Mono', monospace",
-                fontWeight: 600,
+                fontWeight: 400,
               }}
             >
-              bn.ai
+              weaver
             </h1>
 
             {/* Connection status */}
             {isConnected && (
               <div className="text-xs mt-1 font-mono text-green-500">
-                ● Connected ({otherUsersCount} {otherUsersCount === 1 ? 'other' : 'others'} online)
+                ● Connected - {otherUsersCursors.size} others online
               </div>
             )}
             {!isConnected && (
