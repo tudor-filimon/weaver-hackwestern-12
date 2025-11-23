@@ -566,6 +566,7 @@ function Flow() {
         source: edge.source_node_id,
         target: edge.target_node_id,
         type: edge.edge_type || "default",
+        style: { strokeWidth: 2 },
       }));
 
       console.log("Converted nodes:", flowNodes);
@@ -1115,11 +1116,19 @@ function Flow() {
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             nodeTypes={nodeTypes}
+            defaultEdgeOptions={{
+              style: { strokeWidth: 2 }
+            }}
             fitView
             proOptions={{ hideAttribution: true }}
             colorMode={colorMode}
           >
-            <Background />
+            <Background
+              bgColor={colorMode === "dark" ? "#0f0f0f" : "#f5f5f5"}
+              color={colorMode === "dark" ? "#3a3a3a" : "#b0b0b0"}
+              gap={20}
+              size={1}
+            />
             <MiniMap />
           </ReactFlow>
           {/* Floating bn.ai text in corner */}
