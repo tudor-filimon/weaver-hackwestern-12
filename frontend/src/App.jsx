@@ -20,13 +20,18 @@ import Layout from "./components/Layout.jsx";
 import Hotbar from "./components/Hotbar.jsx";
 import SearchModal from "./components/SearchModal.jsx";
 
+// NEW: Import the comprehensive WebSocket hooks
+import { useWebSocket } from "./hooks/useWebSocket.js";
+import { useCollaborativeCursors } from "./hooks/useCollaborativeCursors.js";
+
 const nodeTypes = { chat: ChatNode };
 
 function Flow() {
   // Define handlers first so we can pass them to initial state if needed,
   // but typically we inject them via effects or map over state.
 
-  const { fitView, getNode, getViewport, setCenter } = useReactFlow();
+  const { fitView, getNode, getViewport, setCenter, screenToFlowPosition } =
+    useReactFlow();
   const [edges, setEdges] = useState([]);
   const [colorMode, setColorMode] = useState("dark");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -38,6 +43,120 @@ function Flow() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [currentBoardName, setCurrentBoardName] = useState(null);
 
+  // Collaborative cursors state
+  const [otherUsersCursors, setOtherUsersCursors] = useState(new Map());
+
+  // ********** WEBSOCKET INTEGRATION - ADD THIS **********
+  const { sendMessage, isConnected } = useWebSocket(boardId, {
+    // Handle incoming node movements from other users
+    onNodeMoved: useCallback((message) => {
+      console.log("Node moved by another user:", message);
+      setNodes((nds) =>
+        nds.map((node) =>
+          node.id === message.node_id
+            ? { ...node, position: { x: message.x, y: message.y } }
+            : node
+        )
+      );
+    }, []),
+
+    // Handle incoming node creations from other users
+    onNodeCreated: useCallback(
+      (message) => {
+        console.log("Node created by another user:", message);
+        const nodeData = message.node_data;
+        const newNode = {
+          id: nodeData.id,
+          type: "chat",
+          position: { x: nodeData.x, y: nodeData.y },
+          data: {
+            label: nodeData.title || "New Node",
+            messages: [],
+            boardId: boardId,
+            onAddNode: handleAddConnectedNode,
+          },
+        };
+        setNodes((nds) => [...nds, newNode]);
+      },
+      [boardId]
+    ),
+
+    // Handle incoming node updates from other users (LLM responses, etc.)
+    onNodeUpdated: useCallback((message) => {
+      console.log("Node updated by another user:", message);
+      setNodes((nds) =>
+        nds.map((node) =>
+          node.id === message.node_id
+            ? {
+                ...node,
+                data: { ...node.data, ...message.updates },
+              }
+            : node
+        )
+      );
+    }, []),
+
+    // Handle incoming node deletions from other users
+    onNodeDeleted: useCallback((message) => {
+      console.log("Node deleted by another user:", message);
+      setNodes((nds) => nds.filter((node) => node.id !== message.node_id));
+    }, []),
+
+    // Handle incoming edge creations from other users
+    onEdgeCreated: useCallback((message) => {
+      console.log("Edge created by another user:", message);
+      const edgeData = message.edge_data;
+      const newEdge = {
+        id: edgeData.id,
+        source: edgeData.source_node_id,
+        target: edgeData.target_node_id,
+        type: edgeData.edge_type || "default",
+      };
+      setEdges((eds) => [...eds, newEdge]);
+    }, []),
+
+    // Handle incoming edge deletions from other users
+    onEdgeDeleted: useCallback((message) => {
+      console.log("Edge deleted by another user:", message);
+      setEdges((eds) => eds.filter((edge) => edge.id !== message.edge_id));
+    }, []),
+
+    // Handle user join/leave events
+    onUserJoined: useCallback((message) => {
+      console.log("User joined board:", message.user_count, "users online");
+    }, []),
+
+    onUserLeft: useCallback((message) => {
+      console.log("User left board:", message.user_count, "users online");
+    }, []),
+
+    // Error handling
+    onError: useCallback((message) => {
+      console.error("WebSocket error:", message);
+    }, []),
+
+    // Handle incoming cursor updates from other users
+    onCursorMoved: useCallback((message) => {
+      const cursorData = message.cursor_data;
+      if (!cursorData || !cursorData.user_id) return;
+
+      setOtherUsersCursors((prev) => {
+        const newMap = new Map(prev);
+        if (cursorData.x === null || cursorData.y === null) {
+          newMap.delete(cursorData.user_id);
+        } else {
+          newMap.set(cursorData.user_id, {
+            x: cursorData.x,
+            y: cursorData.y,
+            timestamp: cursorData.timestamp || Date.now(),
+          });
+        }
+        return newMap;
+      });
+    }, []),
+  });
+
+  const { getColorForUser } = useCollaborativeCursors(boardId, sendMessage);
   // Node dimensions (approximate)
   const NODE_WIDTH = 400;
   const NODE_HEIGHT = 200;
@@ -429,6 +548,14 @@ function Flow() {
         try {
           const newNodeResponse = await nodeAPI.createNode(boardId, newNode);
           console.log("New node created in the backend: ", newNodeResponse);
+
+          // *** ADD THIS: Broadcast to other users ***
+          if (isConnected) {
+            sendMessage({
+              type: "node_created",
+              node_data: newNodeResponse,
+            });
+          }
         } catch (error) {
           console.error("Error creating node:", error);
           alert("Failed to create node");
@@ -437,6 +564,14 @@ function Flow() {
         try {
           const newEdgeResponse = await edgeAPI.createEdge(boardId, newEdge);
           console.log("New edge created in the backend: ", newEdgeResponse);
+
+          // *** ADD THIS: Broadcast to other users ***
+          if (isConnected) {
+            sendMessage({
+              type: "edge_created",
+              edge_data: newEdgeResponse,
+            });
+          }
         } catch (error) {
           console.error("Error creating edge:", error);
           alert("Failed to create edge");
@@ -452,6 +587,7 @@ function Flow() {
             messages: [],
             boardId: boardId,
             onAddNode: handleAddConnectedNode,
+            sendWebSocketMessage: sendMessage,
           },
         };
 
@@ -555,6 +691,7 @@ function Flow() {
           isStarred: node.is_starred || false,
           boardId: boardId,
           onAddNode: handleAddConnectedNode,
+          sendWebSocketMessage: sendMessage,
         },
         width: node.width,
         height: node.height,
@@ -653,16 +790,26 @@ function Flow() {
       setNodes((nds) => {
         const updatedNodes = applyNodeChanges(changes, nds);
 
-        // Detect position changes and update backend
+        // Detect position changes and broadcast + update backend
         changes.forEach((change) => {
           if (
             change.type === "position" &&
             change.position &&
             !change.dragging
           ) {
-            // Only update when drag stops (dragging = false)
             const nodeId = change.id;
 
+            // 1. Broadcast to other users via WebSocket (real-time)
+            if (isConnected) {
+              sendMessage({
+                type: "node_moved",
+                node_id: nodeId,
+                x: change.position.x,
+                y: change.position.y,
+              });
+            }
+
+            // 2. Update backend database (persistence)
             // Clear existing timer for this node
             if (positionUpdateTimers.current[nodeId]) {
               clearTimeout(positionUpdateTimers.current[nodeId]);
@@ -677,10 +824,7 @@ function Flow() {
                   x: change.position.x,
                   y: change.position.y,
                 });
-                console.log(
-                  `Position updated for node ${nodeId}:`,
-                  change.position
-                );
+                console.log(`Position updated in database for node ${nodeId}`);
               } catch (error) {
                 console.error(
                   `Failed to update position for node ${nodeId}:`,
@@ -696,7 +840,7 @@ function Flow() {
         return updatedNodes;
       });
     },
-    [boardId]
+    [boardId, isConnected, sendMessage]
   );
 
   const onEdgesChange = useCallback(
@@ -1117,7 +1261,7 @@ function Flow() {
             onConnect={onConnect}
             nodeTypes={nodeTypes}
             defaultEdgeOptions={{
-              style: { strokeWidth: 2 }
+              style: { strokeWidth: 2 },
             }}
             fitView
             proOptions={{ hideAttribution: true }}
@@ -1130,6 +1274,45 @@ function Flow() {
               size={1}
             />
             <MiniMap />
+
+            {/* Render other users' cursors */}
+            {Array.from(otherUsersCursors.entries()).map(([userId, cursor]) => (
+              <div
+                key={userId}
+                className="absolute pointer-events-none z-50"
+                style={{
+                  left: `${cursor.x}px`,
+                  top: `${cursor.y}px`,
+                  transform: "translate(-50%, -50%)",
+                  transition: "left 0.1s ease-out, top 0.1s ease-out",
+                }}
+              >
+                {/* Cursor dot */}
+                <div
+                  className="text-2xl leading-none"
+                  style={{
+                    color: getColorForUser(userId),
+                    filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5))",
+                  }}
+                >
+                  ●
+                </div>
+                {/* User label */}
+                <div
+                  className="mt-1 px-2 py-1 rounded text-xs font-medium whitespace-nowrap"
+                  style={{
+                    backgroundColor: getColorForUser(userId),
+                    color: "#FFFFFF",
+                    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
+                    transform: "translateX(-50%)",
+                    position: "relative",
+                    left: "50%",
+                  }}
+                >
+                  {userId.substring(0, 8)}...
+                </div>
+              </div>
+            ))}
           </ReactFlow>
           {/* Floating bn.ai text in corner */}
           <div className="absolute top-4 left-4 z-10 pointer-events-none">
@@ -1142,6 +1325,18 @@ function Flow() {
             >
               bn.ai
             </h1>
+
+            {/* Connection status */}
+            {isConnected && (
+              <div className="text-xs mt-1 font-mono text-green-500">
+                ● Connected ({otherUsersCursors.size} others online)
+              </div>
+            )}
+            {!isConnected && (
+              <div className="text-xs mt-1 font-mono text-red-500">
+                ● Disconnected
+              </div>
+            )}
           </div>
           {/* Search Modal */}
           <SearchModal

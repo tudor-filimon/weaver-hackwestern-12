@@ -15,7 +15,9 @@ import { nodeAPI } from "../utils/api"; // Connecting to backend
 
 const ChatMessage = ({ role, content }) => (
   <div
-    className={`flex ${role === "user" ? "justify-end" : "justify-start"} mb-3 nodrag`}
+    className={`flex ${
+      role === "user" ? "justify-end" : "justify-start"
+    } mb-3 nodrag`}
   >
     <div
       className={`max-w-[90%] px-4 py-2.5 rounded-3xl text-sm ${
@@ -152,25 +154,48 @@ const SideControl = ({ position, isConnectable, onAddNode, isCollapsed }) => {
   return (
     <div
       className={`absolute ${hitAreaClasses[position]} z-40 group/hit`}
-      style={{ pointerEvents: 'none' }}
+      style={{ pointerEvents: "none" }}
     >
       {/* Hover detection area - only on outer edge, doesn't extend into content area */}
-      <div 
+      <div
         className="absolute cursor-pointer"
-        style={{ 
-          pointerEvents: 'auto',
-          userSelect: 'none',
-          ...(position === Position.Top 
-            ? { left: '50%', top: '0', transform: 'translateX(-50%)', width: '40px', height: '20px' }
+        style={{
+          pointerEvents: "auto",
+          userSelect: "none",
+          ...(position === Position.Top
+            ? {
+                left: "50%",
+                top: "0",
+                transform: "translateX(-50%)",
+                width: "40px",
+                height: "20px",
+              }
             : position === Position.Bottom
-            ? { left: '50%', bottom: '0', transform: 'translateX(-50%)', width: '40px', height: '20px' }
+            ? {
+                left: "50%",
+                bottom: "0",
+                transform: "translateX(-50%)",
+                width: "40px",
+                height: "20px",
+              }
             : position === Position.Left
-            ? { top: '50%', left: '0', transform: 'translateY(-50%)', width: '20px', height: '40px' }
-            : { top: '50%', right: '0', transform: 'translateY(-50%)', width: '20px', height: '40px' }
-          )
+            ? {
+                top: "50%",
+                left: "0",
+                transform: "translateY(-50%)",
+                width: "20px",
+                height: "40px",
+              }
+            : {
+                top: "50%",
+                right: "0",
+                transform: "translateY(-50%)",
+                width: "20px",
+                height: "40px",
+              }),
         }}
       />
-      
+
       {/* Handle - positioned exactly on the edge, directly in the hit area */}
       <Handle
         type="source"
@@ -272,11 +297,28 @@ export default function ChatNode({ data, id, isConnectable }) {
       // Get board ID from node data or use a default
       const boardId = data.boardId || "board-001"; // You'll need to pass this from App.jsx
 
+      // Send message to WebSocket
+      if (data.sendWebSocketMessage) {
+        data.sendWebSocketMessage({
+          type: "node_updated",
+          node_id: id,
+          updates: {
+            messages: newMessages,
+          },
+        });
+      }
+
       // Call the API to get LLM response
       const response = await nodeAPI.updateNode(boardId, id, {
         id: id,
         prompt: currentInput,
       });
+
+      // 3. Update local state with response
+      const assistantMessage = {
+        role: "assistant",
+        content: response.response || "No response received",
+      };
 
       setMessages((prev) => {
         const updated = [...prev];
@@ -287,16 +329,26 @@ export default function ChatNode({ data, id, isConnectable }) {
         return updated;
       });
 
+      const finalMessages = [...newMessages, assistantMessage];
+
       // Update node data with the response
       updateNode(id, {
         data: {
           ...data,
-          messages: [
-            ...newMessages,
-            { role: "assistant", content: response.response }, // FIX: response.response, not response.content
-          ],
+          messages: finalMessages,
         },
       });
+
+      // 5. Broadcast to other users
+      if (data.sendWebSocketMessage) {
+        data.sendWebSocketMessage({
+          type: "node_updated",
+          node_id: id,
+          updates: {
+            messages: finalMessages,
+          },
+        });
+      }
     } catch (error) {
       console.error("Failed to get AI response:", error);
       setMessages((prev) => {
@@ -343,10 +395,6 @@ export default function ChatNode({ data, id, isConnectable }) {
     [data, id]
   );
 
-  // const handleTitleSubmit = () => {
-  //   setIsEditingTitle(false);
-  //   // Here you would typically notify parent to update node data
-  // };
   const handleTitleSubmit = useCallback(async () => {
     setIsEditingTitle(false);
 
@@ -364,6 +412,17 @@ export default function ChatNode({ data, id, isConnectable }) {
       await nodeAPI.updateNode(boardId, id, {
         title: title,
       });
+
+      // Broadcast title change to other users
+      if (data.sendWebSocketMessage) {
+        data.sendWebSocketMessage({
+          type: "node_updated",
+          node_id: id,
+          updates: {
+            label: title,
+          },
+        });
+      }
     } catch (error) {
       console.error("Failed to update title:", error);
       // Optionally revert the title on error
@@ -632,34 +691,34 @@ export default function ChatNode({ data, id, isConnectable }) {
 
         {!hasSent && (
           <div className="p-5 relative mt-auto flex-shrink-0 nodrag">
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-                className="w-full bg-neutral-50 dark:bg-neutral-800/50 rounded-[1.5rem] px-4 py-3 pr-12 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-neutral-300 dark:focus:ring-neutral-700 nodrag"
-                placeholder="Ask anything..."
-                rows={1}
-                style={{ minHeight: "48px" }}
-              />
-              <button
-                onClick={handleSend}
-                disabled={!input.trim()}
-                className={`absolute right-7 bottom-[33px] p-2 rounded-full transition-all duration-200 flex items-center justify-center ${
-                  input.trim()
-                    ? "bg-neutral-900 dark:bg-white text-white dark:text-black hover:scale-105"
-                    : "bg-neutral-200 dark:bg-neutral-700 text-neutral-400 cursor-not-allowed opacity-50"
-                }`}
-              >
-                <ArrowUp size={18} strokeWidth={2.5} />
-              </button>
-            </div>
-          )}
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              className="w-full bg-neutral-50 dark:bg-neutral-800/50 rounded-[1.5rem] px-4 py-3 pr-12 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-neutral-300 dark:focus:ring-neutral-700 nodrag"
+              placeholder="Ask anything..."
+              rows={1}
+              style={{ minHeight: "48px" }}
+            />
+            <button
+              onClick={handleSend}
+              disabled={!input.trim()}
+              className={`absolute right-7 bottom-[33px] p-2 rounded-full transition-all duration-200 flex items-center justify-center ${
+                input.trim()
+                  ? "bg-neutral-900 dark:bg-white text-white dark:text-black hover:scale-105"
+                  : "bg-neutral-200 dark:bg-neutral-700 text-neutral-400 cursor-not-allowed opacity-50"
+              }`}
+            >
+              <ArrowUp size={18} strokeWidth={2.5} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
