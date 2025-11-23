@@ -13,23 +13,88 @@ import {
 
 import { nodeAPI } from "../utils/api"; // Connecting to backend
 
-const ChatMessage = ({ role, content }) => (
-  <div
-    className={`flex ${
-      role === "user" ? "justify-end" : "justify-start"
-    } mb-3 nodrag`}
-  >
-    <div
-      className={`max-w-[90%] px-4 py-2.5 rounded-3xl text-sm ${
-        role === "user"
-          ? "bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 select-none cursor-default"
-          : "text-neutral-800 dark:text-neutral-200 select-text cursor-text"
-      }`}
-    >
-      {content}
+// Typewriter effect hook
+const useTypewriter = (text, speed = 30) => {
+  const [displayedText, setDisplayedText] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+
+  useEffect(() => {
+    if (!text) {
+      setDisplayedText("");
+      setIsTyping(false);
+      return;
+    }
+
+    // If text changes, reset and start typing
+    setDisplayedText("");
+    setIsTyping(true);
+    let currentIndex = 0;
+
+    const typeInterval = setInterval(() => {
+      if (currentIndex < text.length) {
+        setDisplayedText(text.slice(0, currentIndex + 1));
+        currentIndex++;
+      } else {
+        setIsTyping(false);
+        clearInterval(typeInterval);
+      }
+    }, speed);
+
+    return () => clearInterval(typeInterval);
+  }, [text, speed]);
+
+  return { displayedText, isTyping };
+};
+
+// Thinking animation component - shows bouncing dots while waiting for API response
+const ThinkingAnimation = () => (
+  <div className="flex justify-start mb-3 nodrag">
+    <div className="px-4 py-2.5 rounded-3xl bg-neutral-100 dark:bg-neutral-800">
+      <div className="flex gap-1.5 items-center">
+        <div 
+          className="w-2 h-2 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce" 
+          style={{ animationDelay: '0ms', animationDuration: '1.4s' }}
+        ></div>
+        <div 
+          className="w-2 h-2 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce" 
+          style={{ animationDelay: '200ms', animationDuration: '1.4s' }}
+        ></div>
+        <div 
+          className="w-2 h-2 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce" 
+          style={{ animationDelay: '400ms', animationDuration: '1.4s' }}
+        ></div>
+      </div>
     </div>
   </div>
 );
+
+const ChatMessage = ({ role, content, isNewMessage = false }) => {
+  // Only use typewriter effect for assistant messages that are new
+  const shouldType = role === "assistant" && isNewMessage;
+  const { displayedText, isTyping } = useTypewriter(shouldType ? content : "", 20);
+  const displayContent = shouldType ? displayedText : content;
+
+  return (
+    <div
+      className={`flex ${
+        role === "user" ? "justify-end" : "justify-start"
+      } mb-3 nodrag`}
+    >
+      <div
+        className={`max-w-[90%] px-4 py-2.5 rounded-3xl text-sm ${
+          role === "user"
+            ? "bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 select-none cursor-default"
+            : "text-neutral-800 dark:text-neutral-200 select-text cursor-text"
+        }`}
+      >
+        {displayContent}
+        {isTyping && (
+          <span className="inline-block w-0.5 h-4 bg-current ml-0.5 animate-pulse align-middle" />
+        )}
+      </div>
+    </div>
+  );
+};
 
 const SideControl = ({ position, isConnectable, onAddNode, isCollapsed }) => {
   // Invisible Hit Area - positioned to just cover the edge and extend outward
@@ -241,6 +306,8 @@ export default function ChatNode({ data, id, isConnectable }) {
   const [model, setModel] = useState(data.model || "gemini-pro");
   const [hasSent, setHasSent] = useState(messages.length > 0);
   const [isStarred, setIsStarred] = useState(data.isStarred || false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [newMessageIndices, setNewMessageIndices] = useState(new Set());
   const isRoot = data.isRoot || false;
 
   // Title editing state
@@ -280,7 +347,15 @@ export default function ChatNode({ data, id, isConnectable }) {
     }
   }, [isEditingTitle]);
 
-  // ********** NEW CODE HERE **********
+  // Sync local messages state with data.messages prop (for WebSocket updates)
+  useEffect(() => {
+    if (data.messages && JSON.stringify(data.messages) !== JSON.stringify(messages)) {
+      setMessages(data.messages || []);
+      // Clear typewriter flags for synced messages (they should display immediately)
+      setNewMessageIndices(new Set());
+    }
+  }, [data.messages]);
+
   const handleSend = useCallback(async () => {
     if (!input.trim()) return;
     const userMessage = { role: "user", content: input };
@@ -289,8 +364,7 @@ export default function ChatNode({ data, id, isConnectable }) {
     const currentInput = input;
     setInput("");
     setHasSent(true);
-
-    setMessages((prev) => [...prev, { role: "assistant", content: "..." }]);
+    setIsLoading(true); // Start loading animation
 
     try {
       // Get board ID from node data or use a default
@@ -313,22 +387,28 @@ export default function ChatNode({ data, id, isConnectable }) {
         prompt: currentInput,
       });
 
-      // 3. Update local state with response
+      // Update local state with response
       const assistantMessage = {
         role: "assistant",
         content: response.response || "No response received",
       };
 
-      setMessages((prev) => {
-        const updated = [...prev];
-        updated[updated.length - 1] = {
-          role: "assistant",
-          content: response.response || "No response received",
-        };
-        return updated;
-      });
-
       const finalMessages = [...newMessages, assistantMessage];
+      setMessages(finalMessages);
+      setIsLoading(false); // Stop loading animation
+      
+      // Mark the new assistant message as needing typewriter effect
+      setNewMessageIndices(new Set([finalMessages.length - 1]));
+      
+      // Clear the typewriter flag after typing completes (estimate: ~20ms per character)
+      const typingDuration = (response.response?.length || 0) * 20 + 500; // Add 500ms buffer
+      setTimeout(() => {
+        setNewMessageIndices((prev) => {
+          const next = new Set(prev);
+          next.delete(finalMessages.length - 1);
+          return next;
+        });
+      }, typingDuration);
 
       // Update node data with the response
       updateNode(id, {
@@ -338,7 +418,7 @@ export default function ChatNode({ data, id, isConnectable }) {
         },
       });
 
-      // 5. Broadcast to other users
+      // Broadcast to other users
       if (data.sendWebSocketMessage) {
         data.sendWebSocketMessage({
           type: "node_updated",
@@ -350,17 +430,16 @@ export default function ChatNode({ data, id, isConnectable }) {
       }
     } catch (error) {
       console.error("Failed to get AI response:", error);
-      setMessages((prev) => {
-        const updated = [...prev];
-        updated[updated.length - 1] = {
-          role: "assistant",
-          content: `Error: ${error.message}`,
-        };
-        return updated;
-      });
+      const errorMessage = {
+        role: "assistant",
+        content: `Error: ${error.message}`,
+      };
+      const errorMessages = [...newMessages, errorMessage];
+      setMessages(errorMessages);
+      setIsLoading(false); // Stop loading animation on error
+      // Don't add typewriter effect for error messages
     }
   }, [input, messages, id, data, updateNode]);
-  // ********** NEW CODE STOPS HERE **********
 
   const handleDelete = useCallback(async () => {
     // Get boardId from node data
@@ -676,15 +755,21 @@ export default function ChatNode({ data, id, isConnectable }) {
           isCollapsed ? "max-h-0 opacity-0" : "max-h-[2000px] opacity-100"
         }`}
       >
-        {messages.length > 0 && (
+        {(messages.length > 0 || isLoading) && (
           <div
             className={`p-5 nodrag ${
               nodeHeight ? "flex-1 overflow-y-auto min-h-0" : ""
             } custom-scrollbar`}
           >
             {messages.map((msg, idx) => (
-              <ChatMessage key={idx} role={msg.role} content={msg.content} />
+              <ChatMessage 
+                key={idx} 
+                role={msg.role} 
+                content={msg.content}
+                isNewMessage={newMessageIndices.has(idx)}
+              />
             ))}
+            {isLoading && <ThinkingAnimation />}
           </div>
         )}
 
