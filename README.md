@@ -1,8 +1,9 @@
 # weaver
 Hack Western 12 Project - weaver
+[Devpost!!]([url](https://devpost.com/software/weaver-r5qpk0))
 
-### Youtube Demo Link - (Youtube)[https://www.youtube.com/watch?v=sFeuHYn1jLY]
-<iframe width="560" height="315" src="https://www.youtube.com/embed/sFeuHYn1jLY?si=8ZtZrPcGwksgFGN3" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+### Youtube Demo Link
+[Youtube Demo](https://www.youtube.com/watch?v=sFeuHYn1jLY)
 
 ### Setup
 cd backend
@@ -13,7 +14,6 @@ installing dependencies:
 
 running backend server:
    uv run uvicorn main:app --reload
-
 
 frontend:
    cd frontend
